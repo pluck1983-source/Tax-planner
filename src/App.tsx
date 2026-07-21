@@ -8,11 +8,12 @@ import { YearSummary } from './components/YearSummary';
 import { SavingsChart } from './components/SavingsChart';
 import { RatesEditor } from './components/RatesEditor';
 import { TimelineView } from './components/TimelineView';
+import { PaymentsLedger } from './components/PaymentsLedger';
 
-type Tab = 'monthly' | 'summary' | 'timeline' | 'rates';
+type Tab = 'monthly' | 'summary' | 'timeline' | 'payments' | 'rates';
 
 function App() {
-  const { state, selectYear, addYear, updateMonth, updateRates, replaceState } = usePlannerState();
+  const { state, selectYear, addYear, addPriorYear, updateMonth, updateRates, replaceState } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +79,7 @@ function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-        <YearSidebar state={state} onSelect={selectYear} onAddYear={addYear} />
+        <YearSidebar state={state} onSelect={selectYear} onAddYear={addYear} onAddPriorYear={addPriorYear} />
 
         <div className="flex-1 min-w-0">
           {!selectedYear && <p className="text-slate-400">Select or add a tax year to get started.</p>}
@@ -98,6 +99,7 @@ function App() {
                     ['monthly', 'Monthly entries'],
                     ['summary', 'Summary & payments'],
                     ['timeline', 'Timeline'],
+                    ['payments', 'Payments'],
                     ['rates', 'Rates'],
                   ] as [Tab, string][]
                 ).map(([id, label]) => (
@@ -132,6 +134,8 @@ function App() {
               )}
 
               {tab === 'timeline' && <TimelineView state={state} />}
+
+              {tab === 'payments' && <PaymentsLedger state={state} />}
 
               {tab === 'rates' && (
                 <RatesEditor rates={selectedYear.rates} onChange={(patch) => updateRates(selectedYear.id, patch)} />

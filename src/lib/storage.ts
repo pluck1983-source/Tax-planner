@@ -133,6 +133,29 @@ export function addNewYear(state: PlannerState): PlannerState {
   };
 }
 
+/**
+ * Adds a tax year before the earliest one currently on record - useful for
+ * seeding an actual prior year so payments on account for your earliest
+ * tracked year can be calculated properly, instead of assuming none are
+ * required for lack of history.
+ */
+export function addPreviousYear(state: PlannerState): PlannerState {
+  const earliestId = [...state.yearOrder].sort().at(0);
+  const startYear = earliestId
+    ? startYearFromYearId(earliestId) - 1
+    : taxYearStartForDate(new Date()) - 1;
+  const id = yearIdFromStartYear(startYear);
+  if (state.years[id]) return { ...state, selectedYearId: id };
+
+  const rates = getDefaultRatesForYear(startYear);
+  const yearData = createYearData(rates);
+  return {
+    years: { ...state.years, [id]: yearData },
+    yearOrder: [id, ...state.yearOrder],
+    selectedYearId: id,
+  };
+}
+
 export function exportStateAsJson(state: PlannerState): string {
   return JSON.stringify(state, null, 2);
 }

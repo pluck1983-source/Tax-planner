@@ -455,3 +455,82 @@ export function calculateTimeline(state: PlannerState): TimelinePoint[] {
 
   return points;
 }
+
+export interface LedgerItem {
+  label: string;
+  amount: number;
+  yearId: string;
+}
+
+export interface LedgerGroup {
+  dueDate: string;
+  items: LedgerItem[];
+  totalExpected: number;
+  /** null when the month that due date falls in isn't on record, so we can't know what was actually paid */
+  actualPaid: number | null;
+  variance: number | null;
+  status: 'paid' | 'partial' | 'upcoming' | 'overdue' | 'none';
+}
+
+/** 31 Jan falls in the January of the tax year that started the previous calendar year; 31 Jul falls in the July of the tax year starting that same calendar year. */
+function taxYearAndMonthForDueDate(dueDate: string): { yearId: string; monthIndex: number } {
+  const [yearStr, monthStr] = dueDate.split('-');
+  const calendarYear = Number(yearStr);
+  const month = Number(monthStr);
+  return month === 1
+    ? { yearId: yearIdFromStartYear(calendarYear - 1), monthIndex: 9 }
+    : { yearId: yearIdFromStartYear(calendarYear), monthIndex: 3 };
+}
+
+/**
+ * A single chronological ledger of every payment on account and balancing
+ * payment across all years on record, grouped by due date (a year's POA1
+ * and the prior year's balancing payment always share the same 31 Jan
+ * date), each cross-referenced against what was actually recorded as paid
+ * that month via the "paid to HMRC" field.
+ */
+export function calculatePaymentLedger(state: PlannerState): LedgerGroup[] {
+  const sortedYearIds = [...state.yearOrder].sort(
+    (a, b) => startYearFromYearId(a) - startYearFromYearId(b),
+  );
+
+  const groupsByDate = new Map<string, LedgerItem[]>();
+  for (const yearId of sortedYearIds) {
+    const year = state.years[yearId];
+    const startYear = startYearFromYearId(yearId);
+    const priorYear = state.years[yearIdFromStartYear(startYear - 1)] ?? null;
+    const schedule = calculatePaymentsOnAccount(year, priorYear);
+
+    const add = (item: PaymentEvent) => {
+      const existing = groupsByDate.get(item.dueDate) ?? [];
+      existing.push({ label: `${item.label} (${year.rates.label})`, amount: item.amount, yearId });
+      groupsByDate.set(item.dueDate, existing);
+    };
+    if (schedule.poa1) add(schedule.poa1);
+    if (schedule.poa2) add(schedule.poa2);
+    add(schedule.balancingPayment);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const groups: LedgerGroup[] = [...groupsByDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dueDate, items]) => {
+      const totalExpected = items.reduce((sum, i) => sum + i.amount, 0);
+      const { yearId, monthIndex } = taxYearAndMonthForDueDate(dueDate);
+      const month = state.years[yearId]?.months.find((m) => m.monthIndex === monthIndex);
+      const actualPaid = month ? month.hmrcPaymentMade : null;
+      const variance = actualPaid === null ? null : actualPaid - totalExpected;
+
+      let status: LedgerGroup['status'] = 'none';
+      if (totalExpected > 0 || actualPaid) {
+        if (actualPaid) status = variance !== null && variance < -0.5 ? 'partial' : 'paid';
+        else status = dueDate < today ? 'overdue' : 'upcoming';
+      }
+
+      return { dueDate, items, totalExpected, actualPaid, variance, status };
+    })
+    .filter((g) => g.status !== 'none');
+
+  return groups;
+}

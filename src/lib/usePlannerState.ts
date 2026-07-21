@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MonthlyEntry, PlannerState, TaxYearRates } from './types';
-import { addNewYear, loadState, saveState } from './storage';
+import { addNewYear, addPreviousYear, loadState, saveState } from './storage';
 
 export function usePlannerState() {
   const [state, setState] = useState<PlannerState>(() => loadState());
@@ -15,6 +15,10 @@ export function usePlannerState() {
 
   const addYear = useCallback(() => {
     setState((s) => addNewYear(s));
+  }, []);
+
+  const addPriorYear = useCallback(() => {
+    setState((s) => addPreviousYear(s));
   }, []);
 
   const updateMonth = useCallback((yearId: string, monthIndex: number, patch: Partial<MonthlyEntry>) => {
@@ -38,5 +42,5 @@ export function usePlannerState() {
     setState(next);
   }, []);
 
-  return { state, selectYear, addYear, updateMonth, updateRates, replaceState };
+  return { state, selectYear, addYear, addPriorYear, updateMonth, updateRates, replaceState };
 }

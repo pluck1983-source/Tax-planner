@@ -33,8 +33,15 @@ salary, dividends and other income.
   tracks total tax liability, total paid, outstanding liability, total
   saved and bank balance continuously across every tax year on record, not
   just the currently selected one.
-- Add new tax years as they roll around while keeping every previous year on
-  record. Tax rates/bands are editable per year so you can update them once
+- The **Payments** tab is a single chronological ledger of every payment on
+  account and balancing payment across every tax year on record, grouped by
+  due date, showing what's owed vs. what you've actually recorded as paid
+  and whether each is upcoming, overdue, paid or partially paid.
+- Add new tax years as they roll around - forwards as they arrive, or
+  backwards to seed an earlier year you haven't logged yet, so payments on
+  account for your earliest tracked year can be calculated properly instead
+  of assuming none are required. Every previous year stays on record, and
+  tax rates/bands are editable per year so you can update them once
   HMRC/the Budget confirms figures for a new year.
 - All data is stored locally in your browser (localStorage). Use
   Export/Import to back up or move your data between browsers/devices.
