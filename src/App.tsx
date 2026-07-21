@@ -138,8 +138,10 @@ function App() {
 
       <footer className="max-w-5xl mx-auto px-4 pb-8 text-xs text-slate-400">
         Estimates only, for planning purposes - not tax advice. Figures are calculated from rest-of-UK (England,
-        Wales, Northern Ireland) income tax and dividend tax rules and don't account for Scottish rates, pension
-        contributions, Gift Aid, capital gains, or other reliefs. All data is stored locally in your browser.
+        Wales, Northern Ireland) income tax, dividend tax and Capital Gains Tax rules, including relief-at-source
+        pension contributions and Gift Aid. They don't account for Scottish income tax rates, marriage allowance,
+        the High Income Child Benefit Charge, student loan repayments, or other reliefs. All data is stored
+        locally in your browser.
       </footer>
     </div>
   );

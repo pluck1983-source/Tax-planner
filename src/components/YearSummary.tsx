@@ -20,20 +20,45 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 export function YearSummary({ year, priorYear }: Props) {
   const liability = calculateYearLiability(year);
   const poa = calculatePaymentsOnAccount(year, priorYear);
-  const { totals, taxBreakdown } = liability;
+  const { totals, taxBreakdown, capitalGains } = liability;
+  const hasReliefs = totals.pensionContribution > 0 || totals.giftAid > 0;
+  const hasGains = totals.capitalGains > 0;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total income" value={formatGBP(taxBreakdown.totalIncome)} />
-        <StatCard label="Total income tax" value={formatGBP(taxBreakdown.totalTax)} />
+        <StatCard label="Income & dividend tax" value={formatGBP(taxBreakdown.totalTax)} />
         <StatCard label="Collected via PAYE" value={formatGBP(totals.payeTaxDeducted)} />
         <StatCard
-          label="Self-assessment liability"
-          value={formatGBP(liability.selfAssessmentLiability)}
+          label="Income tax self-assessment"
+          value={formatGBP(liability.incomeTaxSelfAssessmentLiability)}
           sub="Owed on top of PAYE"
         />
       </div>
+
+      {(hasGains || hasReliefs) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {hasReliefs && (
+            <StatCard
+              label="Personal allowance"
+              value={formatGBP(taxBreakdown.personalAllowance)}
+              sub={`Basic-rate band extended to ${formatGBP(taxBreakdown.extendedBasicRateBandWidth)} by pension/Gift Aid`}
+            />
+          )}
+          {hasGains && (
+            <>
+              <StatCard label="Taxable capital gains" value={formatGBP(capitalGains.taxableGains)} />
+              <StatCard label="Capital Gains Tax" value={formatGBP(capitalGains.tax)} />
+              <StatCard
+                label="Total self-assessment"
+                value={formatGBP(liability.totalSelfAssessmentLiability)}
+                sub="Income tax + CGT"
+              />
+            </>
+          )}
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
@@ -50,6 +75,12 @@ export function YearSummary({ year, priorYear }: Props) {
             Based on {priorYear.rates.label}, payments on account aren't expected to be required for{' '}
             {year.rates.label} (prior liability was under the {formatGBP(year.rates.poaThreshold)} threshold, or
             enough tax was already collected at source).
+          </p>
+        )}
+        {hasGains && (
+          <p className="text-sm text-slate-400 mb-2">
+            Capital Gains Tax is excluded from payments on account (HMRC bases those on income tax alone) and is
+            instead added in full to the balancing payment below.
           </p>
         )}
         <div className="overflow-x-auto">

@@ -24,15 +24,28 @@ function taxThroughBands(amount: number, bands: Band[]): { tax: number; perBand:
   return { tax, perBand };
 }
 
-export function personalAllowanceFor(rates: TaxYearRates, totalIncome: number): number {
-  const excess = Math.max(0, totalIncome - rates.paTaperThreshold);
+/** Personal allowance after tapering, based on adjusted net income (net of pension/Gift Aid grossing up). */
+export function personalAllowanceFor(rates: TaxYearRates, adjustedNetIncome: number): number {
+  const excess = Math.max(0, adjustedNetIncome - rates.paTaperThreshold);
   const reduction = excess * rates.paTaperRate;
   return Math.max(0, rates.personalAllowance - reduction);
 }
 
+export interface IncomeReliefs {
+  /** Net amount paid into a relief-at-source personal pension (e.g. a SIPP) */
+  pensionContribution: number;
+  /** Net Gift Aid donations */
+  giftAid: number;
+}
+
 export interface IncomeTaxBreakdown {
   totalIncome: number;
+  adjustedNetIncome: number;
   personalAllowance: number;
+  /** Basic-rate band width after extending it for grossed-up pension contributions and Gift Aid */
+  extendedBasicRateBandWidth: number;
+  /** How much of the extended basic-rate band is left after non-dividend and dividend income - available to CGT at the lower rate */
+  remainingBasicRateBandWidth: number;
   nonDividendTax: number;
   dividendTax: number;
   totalTax: number;
@@ -42,18 +55,34 @@ export interface IncomeTaxBreakdown {
  * Computes total UK income tax for a tax year given non-dividend income
  * (salary + other taxable income, stacked first) and dividend income
  * (stacked last, after the personal allowance and other bands are used up).
+ *
+ * Personal pension contributions (relief at source) and Gift Aid donations
+ * both extend the basic-rate (and therefore higher-rate) band by their
+ * grossed-up value, and reduce adjusted net income for the personal
+ * allowance taper - giving higher/additional rate relief on top of the
+ * basic-rate relief already added by the pension provider/charity.
  */
 export function calculateIncomeTax(
   rates: TaxYearRates,
   nonDividendIncome: number,
   dividendIncome: number,
+  reliefs: IncomeReliefs = { pensionContribution: 0, giftAid: 0 },
 ): IncomeTaxBreakdown {
   const totalIncome = Math.max(0, nonDividendIncome) + Math.max(0, dividendIncome);
-  const pa = personalAllowanceFor(rates, totalIncome);
+  const grossUpRate = rates.pensionGiftAidGrossUpRate;
+  const grossPension = Math.max(0, reliefs.pensionContribution) / (1 - grossUpRate);
+  const grossGiftAid = Math.max(0, reliefs.giftAid) / (1 - grossUpRate);
+  const extendedBasicRateBandWidth = rates.basicRateBandWidth + grossPension + grossGiftAid;
+
+  const adjustedNetIncome = Math.max(0, totalIncome - grossPension - grossGiftAid);
+  const pa = personalAllowanceFor(rates, adjustedNetIncome);
 
   const bandsFor = (rateSet: { basic: number; higher: number; additional: number }): Band[] => [
-    { width: rates.basicRateBandWidth, rate: rateSet.basic },
-    { width: Math.max(0, rates.additionalRateThreshold - pa - rates.basicRateBandWidth), rate: rateSet.higher },
+    { width: extendedBasicRateBandWidth, rate: rateSet.basic },
+    {
+      width: Math.max(0, rates.additionalRateThreshold - pa - extendedBasicRateBandWidth),
+      rate: rateSet.higher,
+    },
     { width: Infinity, rate: rateSet.additional },
   ];
 
@@ -80,9 +109,17 @@ export function calculateIncomeTax(
     dividendTax += taxable * remainingBands[i].rate;
   });
 
+  const remainingBasicRateBandWidth = Math.max(
+    0,
+    extendedBasicRateBandWidth - nonDividendResult.perBand[0] - divPerBand[0],
+  );
+
   return {
     totalIncome,
+    adjustedNetIncome,
     personalAllowance: pa,
+    extendedBasicRateBandWidth,
+    remainingBasicRateBandWidth,
     nonDividendTax: nonDividendResult.tax,
     dividendTax,
     totalTax: nonDividendResult.tax + dividendTax,
@@ -94,11 +131,40 @@ export function estimatePayeTax(rates: TaxYearRates, salary: number): number {
   return calculateIncomeTax(rates, salary, 0).nonDividendTax;
 }
 
+export interface CapitalGainsBreakdown {
+  netGains: number;
+  taxableGains: number;
+  tax: number;
+}
+
+/**
+ * Capital Gains Tax stacks on top of income for band purposes: gains that
+ * fall within whatever's left of the basic-rate band (after income tax) are
+ * taxed at the lower CGT rate, the rest at the higher rate. CGT is entirely
+ * separate from income tax - it has its own annual exempt amount and isn't
+ * collected via PAYE or included in payments on account.
+ */
+export function calculateCapitalGainsTax(
+  rates: TaxYearRates,
+  netGains: number,
+  remainingBasicRateBandWidth: number,
+): CapitalGainsBreakdown {
+  const taxableGains = Math.max(0, netGains - rates.cgtAnnualExemptAmount);
+  const { tax } = taxThroughBands(taxableGains, [
+    { width: remainingBasicRateBandWidth, rate: rates.cgtRates.basic },
+    { width: Infinity, rate: rates.cgtRates.higher },
+  ]);
+  return { netGains, taxableGains, tax };
+}
+
 export interface MonthlyTotals {
   paye: number;
   payeTaxDeducted: number;
   dividends: number;
   otherIncome: number;
+  pensionContribution: number;
+  giftAid: number;
+  capitalGains: number;
   savedThisMonth: number;
 }
 
@@ -111,25 +177,55 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
         acc.payeTaxDeducted + (m.payeTaxDeducted ?? estimatePayeTax(rates, m.paye)),
       dividends: acc.dividends + m.dividends,
       otherIncome: acc.otherIncome + m.otherIncome,
+      pensionContribution: acc.pensionContribution + m.pensionContribution,
+      giftAid: acc.giftAid + m.giftAid,
+      capitalGains: acc.capitalGains + m.capitalGains,
       savedThisMonth: acc.savedThisMonth + m.savedThisMonth,
     }),
-    { paye: 0, payeTaxDeducted: 0, dividends: 0, otherIncome: 0, savedThisMonth: 0 },
+    {
+      paye: 0,
+      payeTaxDeducted: 0,
+      dividends: 0,
+      otherIncome: 0,
+      pensionContribution: 0,
+      giftAid: 0,
+      capitalGains: 0,
+      savedThisMonth: 0,
+    },
   );
 }
 
 export interface YearLiability {
   totals: MonthlyTotals;
   taxBreakdown: IncomeTaxBreakdown;
-  /** Tax owed on top of what was collected via PAYE - the self-assessment "relevant amount" */
-  selfAssessmentLiability: number;
+  capitalGains: CapitalGainsBreakdown;
+  /** Income tax owed on top of what was collected via PAYE - the self-assessment "relevant amount" used for payments on account */
+  incomeTaxSelfAssessmentLiability: number;
+  /** Income tax self-assessment liability plus CGT - the total owed via self-assessment for the year */
+  totalSelfAssessmentLiability: number;
+}
+
+function computeReliefsAndCalc(year: TaxYearData, totals: MonthlyTotals) {
+  const nonDividendIncome = totals.paye + totals.otherIncome;
+  const reliefs: IncomeReliefs = {
+    pensionContribution: totals.pensionContribution,
+    giftAid: totals.giftAid,
+  };
+  const taxBreakdown = calculateIncomeTax(year.rates, nonDividendIncome, totals.dividends, reliefs);
+  const capitalGains = calculateCapitalGainsTax(
+    year.rates,
+    totals.capitalGains,
+    taxBreakdown.remainingBasicRateBandWidth,
+  );
+  return { taxBreakdown, capitalGains };
 }
 
 export function calculateYearLiability(year: TaxYearData): YearLiability {
   const totals = sumMonths(year.months, year.rates);
-  const nonDividendIncome = totals.paye + totals.otherIncome;
-  const taxBreakdown = calculateIncomeTax(year.rates, nonDividendIncome, totals.dividends);
-  const selfAssessmentLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted);
-  return { totals, taxBreakdown, selfAssessmentLiability };
+  const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, totals);
+  const incomeTaxSelfAssessmentLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted);
+  const totalSelfAssessmentLiability = incomeTaxSelfAssessmentLiability + capitalGains.tax;
+  return { totals, taxBreakdown, capitalGains, incomeTaxSelfAssessmentLiability, totalSelfAssessmentLiability };
 }
 
 export interface PaymentEvent {
@@ -157,6 +253,10 @@ function addYears(isoDate: string, years: number): string {
  * Computes the (likely) payments on account and balancing payment for a
  * given tax year, based on that year's own liability and the prior year's
  * liability (POAs are always set from the prior year's self-assessment bill).
+ *
+ * Payments on account are based on income tax only - HMRC excludes Capital
+ * Gains Tax from the POA calculation entirely. Any CGT owed is instead added
+ * in full to the balancing payment.
  */
 export function calculatePaymentsOnAccount(
   currentYear: TaxYearData,
@@ -174,9 +274,9 @@ export function calculatePaymentsOnAccount(
     const collectedFraction =
       prior.taxBreakdown.totalTax > 0 ? prior.totals.payeTaxDeducted / prior.taxBreakdown.totalTax : 1;
     poaRequired =
-      prior.selfAssessmentLiability > currentYear.rates.poaThreshold &&
+      prior.incomeTaxSelfAssessmentLiability > currentYear.rates.poaThreshold &&
       collectedFraction < currentYear.rates.poaSourceCollectionFraction;
-    if (poaRequired) poaAmountEach = prior.selfAssessmentLiability / 2;
+    if (poaRequired) poaAmountEach = prior.incomeTaxSelfAssessmentLiability / 2;
   }
 
   const poa1: PaymentEvent | null = poaRequired
@@ -187,7 +287,8 @@ export function calculatePaymentsOnAccount(
     : null;
 
   const poaPaid = poaRequired ? poaAmountEach * 2 : 0;
-  const balancingAmount = current.selfAssessmentLiability - poaPaid;
+  // Balancing payment reconciles income tax against POAs already paid, then adds CGT in full (CGT is never part of POA).
+  const balancingAmount = current.incomeTaxSelfAssessmentLiability - poaPaid + current.capitalGains.tax;
 
   const balancingPayment: PaymentEvent = {
     label: 'Balancing payment',
@@ -214,9 +315,10 @@ export interface MonthlyProgress {
 }
 
 /**
- * For each month, computes the cumulative self-assessment liability implied
- * by income entered so far this year - i.e. the amount that should have been
- * saved by that point to cover the year's tax bill if no more income arrived.
+ * For each month, computes the cumulative self-assessment liability (income
+ * tax + CGT) implied by everything entered so far this year - i.e. the
+ * amount that should have been saved by that point to cover the year's tax
+ * bill if nothing else changed for the rest of the year.
  */
 export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
   const sorted = [...year.months].sort((a, b) => a.monthIndex - b.monthIndex);
@@ -224,13 +326,12 @@ export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
   let cumulativeSaved = 0;
   for (const month of sorted) {
     const totals = sumMonths(year.months, year.rates, month.monthIndex);
-    const nonDividendIncome = totals.paye + totals.otherIncome;
-    const breakdown = calculateIncomeTax(year.rates, nonDividendIncome, totals.dividends);
-    const cumulativeTargetLiability = Math.max(0, breakdown.totalTax - totals.payeTaxDeducted);
+    const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, totals);
+    const cumulativeTargetLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted) + capitalGains.tax;
     cumulativeSaved += month.savedThisMonth;
     results.push({
       monthIndex: month.monthIndex,
-      cumulativeIncome: nonDividendIncome + totals.dividends,
+      cumulativeIncome: taxBreakdown.totalIncome + totals.capitalGains,
       cumulativeTargetLiability,
       cumulativeSaved,
       variance: cumulativeSaved - cumulativeTargetLiability,

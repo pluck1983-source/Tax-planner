@@ -7,14 +7,23 @@ interface Props {
   onUpdateMonth: (monthIndex: number, patch: Partial<TaxYearData['months'][number]>) => void;
 }
 
-function NumberCell({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function NumberCell({
+  value,
+  onChange,
+  title,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  title?: string;
+}) {
   return (
     <input
       type="number"
       inputMode="decimal"
-      className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+      className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
       value={value === 0 ? '' : value}
       placeholder="0"
+      title={title}
       onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
     />
   );
@@ -27,12 +36,28 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse">
         <thead>
+          <tr className="text-left text-slate-400 text-xs">
+            <th></th>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={3}>
+              Income
+            </th>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
+              Reliefs (net paid)
+            </th>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
+              Gains &amp; savings
+            </th>
+            <th></th>
+          </tr>
           <tr className="text-left text-slate-500 dark:text-slate-400">
             <th className="py-2 pr-2 font-medium">Month</th>
             <th className="py-2 px-2 font-medium text-right">Salary (PAYE)</th>
             <th className="py-2 px-2 font-medium text-right">PAYE tax deducted</th>
             <th className="py-2 px-2 font-medium text-right">Dividends</th>
             <th className="py-2 px-2 font-medium text-right">Other income</th>
+            <th className="py-2 px-2 font-medium text-right">Pension</th>
+            <th className="py-2 px-2 font-medium text-right">Gift Aid</th>
+            <th className="py-2 px-2 font-medium text-right">Capital gains</th>
             <th className="py-2 px-2 font-medium text-right">Saved this month</th>
             <th className="py-2 pl-2 font-medium">Notes</th>
           </tr>
@@ -52,7 +77,7 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
                   <input
                     type="number"
                     inputMode="decimal"
-                    className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+                    className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
                     value={m.payeTaxDeducted ?? ''}
                     placeholder={estimatedPaye ? String(Math.round(estimatedPaye)) : '0'}
                     onChange={(e) =>
@@ -74,6 +99,27 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
                 </td>
                 <td className="py-1.5 px-2 text-right">
                   <NumberCell
+                    value={m.pensionContribution}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { pensionContribution: v })}
+                    title="Net amount paid into a personal (relief-at-source) pension, e.g. a SIPP - not workplace contributions taken from gross pay"
+                  />
+                </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
+                    value={m.giftAid}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { giftAid: v })}
+                    title="Net Gift Aid donations made this month"
+                  />
+                </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
+                    value={m.capitalGains}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { capitalGains: v })}
+                    title="Net chargeable gains realised this month, before the annual exempt amount"
+                  />
+                </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
                     value={m.savedThisMonth}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { savedThisMonth: v })}
                   />
@@ -91,10 +137,18 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
           })}
         </tbody>
       </table>
-      <p className="text-xs text-slate-400 mt-2">
-        Leave "PAYE tax deducted" blank to auto-estimate it from salary at a standard tax code (shown as the
-        placeholder) - enter the actual figure from your payslip for accuracy.
-      </p>
+      <ul className="text-xs text-slate-400 mt-2 space-y-1">
+        <li>
+          Leave "PAYE tax deducted" blank to auto-estimate it from salary at a standard tax code (shown as the
+          placeholder) - enter the actual figure from your payslip for accuracy.
+        </li>
+        <li>
+          "Pension" is for personal relief-at-source contributions (e.g. a SIPP) paid from your own money - if
+          your salary already has workplace pension contributions taken off before tax (salary sacrifice/net
+          pay), enter your salary after that deduction and leave this blank.
+        </li>
+        <li>"Gift Aid" and "Pension" should both be the net amount you actually paid - they're grossed up automatically.</li>
+      </ul>
     </div>
   );
 }

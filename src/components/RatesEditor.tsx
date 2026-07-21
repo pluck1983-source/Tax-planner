@@ -88,6 +88,50 @@ export function RatesEditor({ rates, onChange }: Props) {
           />
         </div>
       </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">
+          Pension &amp; Gift Aid relief
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Field
+            label="Gross-up rate"
+            value={rates.pensionGiftAidGrossUpRate}
+            onChange={(v) => onChange({ pensionGiftAidGrossUpRate: v })}
+            suffix="decimal, e.g. 0.2 = net ÷ 0.8"
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Capital Gains Tax</h3>
+        <p className="text-xs text-slate-400 mb-3 max-w-2xl">
+          Gains stack on top of your income for band purposes: whatever's left of your basic-rate band after
+          salary/dividends is taxed at the lower rate, the rest at the higher rate. CGT on residential property
+          usually has to be reported and paid within 60 days of completion, separately from self-assessment -
+          this planner shows it together with your balancing payment for simplicity.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Field
+            label="Annual exempt amount"
+            value={rates.cgtAnnualExemptAmount}
+            onChange={(v) => onChange({ cgtAnnualExemptAmount: v })}
+            suffix="£/yr"
+          />
+          <Field
+            label="Lower rate"
+            value={rates.cgtRates.basic}
+            onChange={(v) => onChange({ cgtRates: { ...rates.cgtRates, basic: v } })}
+            suffix="decimal"
+          />
+          <Field
+            label="Higher rate"
+            value={rates.cgtRates.higher}
+            onChange={(v) => onChange({ cgtRates: { ...rates.cgtRates, higher: v } })}
+            suffix="decimal"
+          />
+        </div>
+      </section>
     </div>
   );
 }

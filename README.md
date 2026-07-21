@@ -6,15 +6,24 @@ salary, dividends and other income.
 
 ## What it does
 
-- Log salary (PAYE), dividends and other taxable income month by month for
+- Log salary (PAYE), dividends, other taxable income, personal pension
+  contributions, Gift Aid donations and capital gains month by month for
   each UK tax year (6 April - 5 April).
 - Calculates income tax and dividend tax using the current rest-of-UK
   (England/Wales/NI) rates and bands, including the personal allowance
   taper and dividend allowance.
+- Personal (relief-at-source) pension contributions and Gift Aid donations
+  extend your basic/higher-rate bands and reduce adjusted net income for the
+  personal allowance taper, giving higher/additional-rate relief on top of
+  the basic-rate relief added automatically by the pension provider/charity.
+- Calculates Capital Gains Tax separately, using whatever's left of your
+  basic-rate band after income and dividends, and the annual exempt amount.
 - Works out the self-assessment liability owed on top of tax already
   collected through PAYE.
 - Estimates the (likely) **payments on account** and **balancing payment**
-  for each year, with due dates, based on the prior year's liability.
+  for each year, with due dates, based on the prior year's liability. CGT is
+  excluded from payments on account (per HMRC rules) and added in full to
+  the balancing payment.
 - Shows a running month-on-month figure for what you should have saved by
   each point in the year to cover that year's tax bill, and compares it
   against what you've actually logged as saved.
@@ -25,8 +34,11 @@ salary, dividends and other income.
   Export/Import to back up or move your data between browsers/devices.
 
 Figures are estimates for planning purposes only, not tax advice - they
-don't account for Scottish income tax rates, pension contributions, Gift
-Aid, capital gains, or other reliefs.
+don't account for Scottish income tax rates, marriage allowance, the High
+Income Child Benefit Charge, student loan repayments, or other reliefs.
+Capital Gains Tax on residential property usually has its own 60-day
+reporting/payment deadline, separate from self-assessment - this planner
+shows it together with the balancing payment for simplicity.
 
 ## Development
 

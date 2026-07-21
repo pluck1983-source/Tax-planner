@@ -36,6 +36,20 @@ export interface TaxYearRates {
   poaThreshold: number;
   /** Payments on account are skipped if at least this fraction of tax was collected at source */
   poaSourceCollectionFraction: number;
+
+  /**
+   * Rate used to gross up net personal pension contributions (relief at
+   * source) and Gift Aid donations back to their gross value - e.g. a net
+   * £80 donation grosses up to £100 at a 0.2 (20%) rate.
+   */
+  pensionGiftAidGrossUpRate: number;
+
+  /** Annual exempt amount for Capital Gains Tax */
+  cgtAnnualExemptAmount: number;
+  cgtRates: {
+    basic: number;
+    higher: number;
+  };
 }
 
 export const MONTH_LABELS = [
@@ -50,6 +64,12 @@ export interface MonthlyEntry {
   payeTaxDeducted: number | null;
   dividends: number;
   otherIncome: number;
+  /** Net amount paid into a personal (relief-at-source) pension this month, e.g. a SIPP */
+  pensionContribution: number;
+  /** Net Gift Aid donations made this month */
+  giftAid: number;
+  /** Net chargeable capital gains realised this month (before the annual exempt amount) */
+  capitalGains: number;
   savedThisMonth: number;
   notes: string;
 }

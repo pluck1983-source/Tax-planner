@@ -18,6 +18,11 @@ const BASE_RATES = {
   dividendRates: { basic: 0.0875, higher: 0.3375, additional: 0.3935 },
   poaThreshold: 1000,
   poaSourceCollectionFraction: 0.8,
+  pensionGiftAidGrossUpRate: 0.2,
+  // CGT rates were unified for general assets and residential property from
+  // 30 Oct 2024 (Autumn Budget); this default applies from 2024/25 onward.
+  cgtAnnualExemptAmount: 3000,
+  cgtRates: { basic: 0.18, higher: 0.24 },
 };
 
 function makeYear(startYear: number, overrides: Partial<TaxYearRates> = {}): TaxYearRates {
@@ -34,7 +39,13 @@ function makeYear(startYear: number, overrides: Partial<TaxYearRates> = {}): Tax
 }
 
 export const DEFAULT_TAX_YEARS: TaxYearRates[] = [
-  makeYear(2023, { dividendAllowance: 1000 }),
+  makeYear(2023, {
+    dividendAllowance: 1000,
+    // 2023/24 general-asset CGT rates were 10%/20% (residential property was
+    // 18%/24% - not modelled separately here, edit on the Rates tab if needed).
+    cgtAnnualExemptAmount: 6000,
+    cgtRates: { basic: 0.1, higher: 0.2 },
+  }),
   makeYear(2024),
   makeYear(2025),
   makeYear(2026),

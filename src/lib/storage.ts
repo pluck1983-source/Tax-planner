@@ -16,6 +16,9 @@ export function emptyMonths(): MonthlyEntry[] {
     payeTaxDeducted: null,
     dividends: 0,
     otherIncome: 0,
+    pensionContribution: 0,
+    giftAid: 0,
+    capitalGains: 0,
     savedThisMonth: 0,
     notes: '',
   }));
@@ -23,6 +26,38 @@ export function emptyMonths(): MonthlyEntry[] {
 
 export function createYearData(rates: TaxYearRates): TaxYearData {
   return { id: rates.id, rates, months: emptyMonths() };
+}
+
+const RATES_FALLBACK_DEFAULTS: Pick<
+  TaxYearRates,
+  'pensionGiftAidGrossUpRate' | 'cgtAnnualExemptAmount' | 'cgtRates'
+> = {
+  pensionGiftAidGrossUpRate: 0.2,
+  cgtAnnualExemptAmount: 3000,
+  cgtRates: { basic: 0.18, higher: 0.24 },
+};
+
+const MONTH_FALLBACK_DEFAULTS: Pick<MonthlyEntry, 'pensionContribution' | 'giftAid' | 'capitalGains'> = {
+  pensionContribution: 0,
+  giftAid: 0,
+  capitalGains: 0,
+};
+
+/**
+ * Backfills fields that didn't exist in older saved/exported data (e.g. from
+ * before pension/Gift Aid/CGT support was added) so stale localStorage or
+ * import files don't produce NaN once those fields are read.
+ */
+function normalizeState(state: PlannerState): PlannerState {
+  const years: Record<string, TaxYearData> = {};
+  for (const [id, year] of Object.entries(state.years)) {
+    years[id] = {
+      ...year,
+      rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
+      months: year.months.map((m) => ({ ...MONTH_FALLBACK_DEFAULTS, ...m })),
+    };
+  }
+  return { ...state, years };
 }
 
 /** Which UK tax year (by start calendar year) a given date falls in. */
@@ -53,7 +88,7 @@ export function loadState(): PlannerState {
     if (!raw) return initialState();
     const parsed = JSON.parse(raw) as PlannerState;
     if (!parsed.years || !parsed.yearOrder) return initialState();
-    return parsed;
+    return normalizeState(parsed);
   } catch {
     return initialState();
   }
@@ -100,5 +135,5 @@ export function exportStateAsJson(state: PlannerState): string {
 export function importStateFromJson(json: string): PlannerState {
   const parsed = JSON.parse(json) as PlannerState;
   if (!parsed.years || !parsed.yearOrder) throw new Error('Invalid tax planner file');
-  return parsed;
+  return normalizeState(parsed);
 }
