@@ -1,9 +1,10 @@
-import type { TaxYearData } from '../lib/types';
+import type { PlannerState, TaxYearData } from '../lib/types';
 import { MONTH_LABELS } from '../lib/types';
-import { estimatePayeTax } from '../lib/taxEngine';
+import { calculateExpectedHmrcPayment, estimatePayeTax } from '../lib/taxEngine';
 
 interface Props {
   year: TaxYearData;
+  state: PlannerState;
   onUpdateMonth: (monthIndex: number, patch: Partial<TaxYearData['months'][number]>) => void;
 }
 
@@ -11,10 +12,12 @@ function NumberCell({
   value,
   onChange,
   title,
+  placeholder,
 }: {
   value: number;
   onChange: (v: number) => void;
   title?: string;
+  placeholder?: string;
 }) {
   return (
     <input
@@ -22,14 +25,14 @@ function NumberCell({
       inputMode="decimal"
       className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
       value={value === 0 ? '' : value}
-      placeholder="0"
+      placeholder={placeholder ?? '0'}
       title={title}
       onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
     />
   );
 }
 
-export function MonthlyTable({ year, onUpdateMonth }: Props) {
+export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
   const months = [...year.months].sort((a, b) => a.monthIndex - b.monthIndex);
 
   return (
@@ -47,6 +50,9 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
             <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
               Gains &amp; savings
             </th>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={1}>
+              HMRC
+            </th>
             <th></th>
           </tr>
           <tr className="text-left text-slate-500 dark:text-slate-400">
@@ -59,6 +65,7 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
             <th className="py-2 px-2 font-medium text-right">Gift Aid</th>
             <th className="py-2 px-2 font-medium text-right">Capital gains</th>
             <th className="py-2 px-2 font-medium text-right">Saved this month</th>
+            <th className="py-2 px-2 font-medium text-right">Paid to HMRC</th>
             <th className="py-2 pl-2 font-medium">Notes</th>
           </tr>
         </thead>
@@ -124,6 +131,18 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
                     onChange={(v) => onUpdateMonth(m.monthIndex, { savedThisMonth: v })}
                   />
                 </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
+                    value={m.hmrcPaymentMade}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { hmrcPaymentMade: v })}
+                    placeholder={
+                      m.monthIndex === 9 || m.monthIndex === 3
+                        ? String(Math.round(calculateExpectedHmrcPayment(state, year.id, m.monthIndex)))
+                        : '0'
+                    }
+                    title="Actual amount paid to HMRC this month (negative = a refund received). Expected on 31 Jan and 31 Jul."
+                  />
+                </td>
                 <td className="py-1.5 pl-2">
                   <input
                     type="text"
@@ -148,6 +167,11 @@ export function MonthlyTable({ year, onUpdateMonth }: Props) {
           pay), enter your salary after that deduction and leave this blank.
         </li>
         <li>"Gift Aid" and "Pension" should both be the net amount you actually paid - they're grossed up automatically.</li>
+        <li>
+          "Paid to HMRC" is what you actually sent them - the placeholder in January and July shows the expected
+          payment on account/balancing payment based on figures entered so far. See the Timeline tab for the
+          running total this leaves in the bank.
+        </li>
       </ul>
     </div>
   );

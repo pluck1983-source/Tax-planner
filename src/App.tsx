@@ -7,8 +7,9 @@ import { MonthlyTable } from './components/MonthlyTable';
 import { YearSummary } from './components/YearSummary';
 import { SavingsChart } from './components/SavingsChart';
 import { RatesEditor } from './components/RatesEditor';
+import { TimelineView } from './components/TimelineView';
 
-type Tab = 'monthly' | 'summary' | 'rates';
+type Tab = 'monthly' | 'summary' | 'timeline' | 'rates';
 
 function App() {
   const { state, selectYear, addYear, updateMonth, updateRates, replaceState } = usePlannerState();
@@ -96,6 +97,7 @@ function App() {
                   [
                     ['monthly', 'Monthly entries'],
                     ['summary', 'Summary & payments'],
+                    ['timeline', 'Timeline'],
                     ['rates', 'Rates'],
                   ] as [Tab, string][]
                 ).map(([id, label]) => (
@@ -117,6 +119,7 @@ function App() {
               {tab === 'monthly' && (
                 <MonthlyTable
                   year={selectedYear}
+                  state={state}
                   onUpdateMonth={(monthIndex, patch) => updateMonth(selectedYear.id, monthIndex, patch)}
                 />
               )}
@@ -127,6 +130,8 @@ function App() {
                   <SavingsChart year={selectedYear} />
                 </div>
               )}
+
+              {tab === 'timeline' && <TimelineView state={state} />}
 
               {tab === 'rates' && (
                 <RatesEditor rates={selectedYear.rates} onChange={(patch) => updateRates(selectedYear.id, patch)} />

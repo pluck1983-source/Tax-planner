@@ -1,4 +1,6 @@
-import type { MonthlyEntry, TaxYearData, TaxYearRates } from './types';
+import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates } from './types';
+import { MONTH_LABELS } from './types';
+import { startYearFromYearId, yearIdFromStartYear } from './defaultRates';
 
 export interface Band {
   width: number; // Infinity for the top band
@@ -166,6 +168,7 @@ export interface MonthlyTotals {
   giftAid: number;
   capitalGains: number;
   savedThisMonth: number;
+  hmrcPaymentMade: number;
 }
 
 export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex?: number): MonthlyTotals {
@@ -181,6 +184,7 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       giftAid: acc.giftAid + m.giftAid,
       capitalGains: acc.capitalGains + m.capitalGains,
       savedThisMonth: acc.savedThisMonth + m.savedThisMonth,
+      hmrcPaymentMade: acc.hmrcPaymentMade + m.hmrcPaymentMade,
     }),
     {
       paye: 0,
@@ -191,6 +195,7 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       giftAid: 0,
       capitalGains: 0,
       savedThisMonth: 0,
+      hmrcPaymentMade: 0,
     },
   );
 }
@@ -306,6 +311,42 @@ export function calculatePaymentsOnAccount(
   };
 }
 
+/**
+ * The amount HMRC would actually expect on a given month, for showing as a
+ * placeholder next to the "paid to HMRC" field. Only January (payment on
+ * account 1 for this year + the prior year's balancing payment, both due
+ * 31 Jan) and July (the prior year's payment on account 2, due 31 Jul)
+ * ever have anything due - every other month returns 0.
+ */
+export function calculateExpectedHmrcPayment(
+  state: PlannerState,
+  yearId: string,
+  monthIndex: number,
+): number {
+  const year = state.years[yearId];
+  if (!year || (monthIndex !== 9 && monthIndex !== 3)) return 0;
+
+  const startYear = startYearFromYearId(yearId);
+  const priorYear = state.years[yearIdFromStartYear(startYear - 1)] ?? null;
+  const priorPriorYear = state.years[yearIdFromStartYear(startYear - 2)] ?? null;
+
+  if (monthIndex === 9) {
+    // January: this year's POA1, plus the prior year's balancing payment (both due 31 Jan).
+    const thisYearPoa = calculatePaymentsOnAccount(year, priorYear);
+    let expected = thisYearPoa.poa1?.amount ?? 0;
+    if (priorYear) {
+      const priorYearPoa = calculatePaymentsOnAccount(priorYear, priorPriorYear);
+      expected += Math.max(0, priorYearPoa.balancingPayment.amount);
+    }
+    return expected;
+  }
+
+  // July: the prior year's POA2.
+  if (!priorYear) return 0;
+  const priorYearPoa = calculatePaymentsOnAccount(priorYear, priorPriorYear);
+  return priorYearPoa.poa2?.amount ?? 0;
+}
+
 export interface MonthlyProgress {
   monthIndex: number;
   cumulativeIncome: number;
@@ -338,4 +379,79 @@ export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
     });
   }
   return results;
+}
+
+export interface TimelinePoint {
+  yearId: string;
+  monthIndex: number;
+  /** e.g. "Jan 2026" */
+  label: string;
+  /** Total tax liability (income tax + CGT) accrued to date, across every year - never reduced by payments */
+  cumulativeLiability: number;
+  /** Total actually paid to HMRC to date (via the "paid to HMRC" field), across every year */
+  cumulativePaidToHmrc: number;
+  /** What's still owed and not yet paid - cumulativeLiability minus cumulativePaidToHmrc */
+  outstandingLiability: number;
+  /** Total money set aside to date, across every year */
+  cumulativeSaved: number;
+  /** Actual cash on hand for the tax bill - cumulativeSaved minus cumulativePaidToHmrc */
+  bankBalance: number;
+  /** This month's own HMRC payment, if any (for annotating the chart) */
+  hmrcPaymentMade: number;
+}
+
+function calendarYearFor(startYear: number, monthIndex: number): number {
+  return monthIndex <= 8 ? startYear : startYear + 1;
+}
+
+/**
+ * Walks every tax year in chronological order, carrying the running tax
+ * liability, amount saved, and amount paid to HMRC forward across year
+ * boundaries instead of resetting each April - so the "amount that should be
+ * in the bank" and the actual bank balance stay continuous across the whole
+ * multi-year timeline, through every payment on account and balancing
+ * payment date.
+ */
+export function calculateTimeline(state: PlannerState): TimelinePoint[] {
+  const sortedYearIds = [...state.yearOrder].sort(
+    (a, b) => startYearFromYearId(a) - startYearFromYearId(b),
+  );
+
+  const points: TimelinePoint[] = [];
+  let liabilityBase = 0;
+  let cumulativePaid = 0;
+  let cumulativeSaved = 0;
+
+  for (const yearId of sortedYearIds) {
+    const year = state.years[yearId];
+    const startYear = startYearFromYearId(yearId);
+    const progress = calculateMonthlyProgress(year);
+    const sortedMonths = [...year.months].sort((a, b) => a.monthIndex - b.monthIndex);
+
+    for (const month of sortedMonths) {
+      const monthProgress = progress.find((p) => p.monthIndex === month.monthIndex)!;
+      cumulativePaid += month.hmrcPaymentMade;
+      cumulativeSaved += month.savedThisMonth;
+      const cumulativeLiability = liabilityBase + monthProgress.cumulativeTargetLiability;
+
+      points.push({
+        yearId,
+        monthIndex: month.monthIndex,
+        label: `${MONTH_LABELS[month.monthIndex]} ${calendarYearFor(startYear, month.monthIndex)}`,
+        cumulativeLiability,
+        cumulativePaidToHmrc: cumulativePaid,
+        outstandingLiability: cumulativeLiability - cumulativePaid,
+        cumulativeSaved,
+        bankBalance: cumulativeSaved - cumulativePaid,
+        hmrcPaymentMade: month.hmrcPaymentMade,
+      });
+    }
+
+    // Once a year is fully behind us, its whole liability becomes a fixed
+    // base the next year accrues on top of - tax owed doesn't disappear
+    // just because a new tax year started.
+    liabilityBase += calculateYearLiability(year).totalSelfAssessmentLiability;
+  }
+
+  return points;
 }

@@ -27,6 +27,12 @@ salary, dividends and other income.
 - Shows a running month-on-month figure for what you should have saved by
   each point in the year to cover that year's tax bill, and compares it
   against what you've actually logged as saved.
+- Record what you actually pay HMRC each January (payment on account 1 +
+  prior year's balancing payment) and July (prior year's payment on account
+  2) - placeholders show the expected amount. The **Timeline** tab then
+  tracks total tax liability, total paid, outstanding liability, total
+  saved and bank balance continuously across every tax year on record, not
+  just the currently selected one.
 - Add new tax years as they roll around while keeping every previous year on
   record. Tax rates/bands are editable per year so you can update them once
   HMRC/the Budget confirms figures for a new year.

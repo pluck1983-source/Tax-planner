@@ -71,6 +71,13 @@ export interface MonthlyEntry {
   /** Net chargeable capital gains realised this month (before the annual exempt amount) */
   capitalGains: number;
   savedThisMonth: number;
+  /**
+   * Actual amount paid to HMRC this month (positive = paid out, negative = a
+   * refund received). Only expected in January (payment on account 1 +
+   * prior year's balancing payment) and July (prior year's payment on
+   * account 2), but any month can be used.
+   */
+  hmrcPaymentMade: number;
   notes: string;
 }
 

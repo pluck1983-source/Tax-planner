@@ -20,6 +20,7 @@ export function emptyMonths(): MonthlyEntry[] {
     giftAid: 0,
     capitalGains: 0,
     savedThisMonth: 0,
+    hmrcPaymentMade: 0,
     notes: '',
   }));
 }
@@ -37,10 +38,14 @@ const RATES_FALLBACK_DEFAULTS: Pick<
   cgtRates: { basic: 0.18, higher: 0.24 },
 };
 
-const MONTH_FALLBACK_DEFAULTS: Pick<MonthlyEntry, 'pensionContribution' | 'giftAid' | 'capitalGains'> = {
+const MONTH_FALLBACK_DEFAULTS: Pick<
+  MonthlyEntry,
+  'pensionContribution' | 'giftAid' | 'capitalGains' | 'hmrcPaymentMade'
+> = {
   pensionContribution: 0,
   giftAid: 0,
   capitalGains: 0,
+  hmrcPaymentMade: 0,
 };
 
 /**
