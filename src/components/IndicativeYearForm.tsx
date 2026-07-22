@@ -16,19 +16,22 @@ function Field({
   onChange,
   placeholder,
   title,
+  allowNegative,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
   title?: string;
+  /** iOS's "decimal" keypad has no minus key, so fields that can legitimately go negative fall back to the default number keypad, which does. */
+  allowNegative?: boolean;
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-slate-500 dark:text-slate-400">{label}</span>
       <input
         type="number"
-        inputMode="decimal"
+        inputMode={allowNegative ? undefined : 'decimal'}
         title={title}
         className="w-full px-2 py-1.5 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
         value={value === 0 ? '' : value}
@@ -99,6 +102,8 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
         <Field
           label="Total saved"
           value={totals.savedThisMonth}
+          title="Negative = money taken back out of savings across the year (e.g. a surplus withdrawn but not paid to HMRC)"
+          allowNegative
           onChange={(v) => onUpdateMonth(0, { savedThisMonth: v })}
         />
       </div>
@@ -110,14 +115,16 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
             label={`Paid in January ${startYear + 1}`}
             value={totals.hmrcPaymentJan}
             placeholder={String(Math.round(calculateExpectedHmrcPayment(state, year.id, 9)))}
-            title="Payment on account 1 + the prior year's balancing payment, both due 31 January"
+            title="Payment on account 1 + the prior year's balancing payment, both due 31 January (negative = a refund received)"
+            allowNegative
             onChange={(v) => onUpdateMonth(9, { hmrcPaymentMade: v })}
           />
           <Field
             label={`Paid in July ${startYear}`}
             value={totals.hmrcPaymentJul}
             placeholder={String(Math.round(calculateExpectedHmrcPayment(state, year.id, 3)))}
-            title="The prior year's payment on account 2, due 31 July"
+            title="The prior year's payment on account 2, due 31 July (negative = a refund received)"
+            allowNegative
             onChange={(v) => onUpdateMonth(3, { hmrcPaymentMade: v })}
           />
           <div className="flex flex-col gap-1 text-sm">

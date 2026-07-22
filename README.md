@@ -45,7 +45,9 @@ salary, dividends and other income.
   both isn't wrongly flagged as overpaying this year's payment on account.
 - Shows a running month-on-month figure for what you should have saved by
   each point in the year to cover that year's tax bill, and compares it
-  against what you've actually logged as saved.
+  against what you've actually logged as saved. "Saved this month" and
+  "Paid to HMRC" both accept negative amounts - e.g. money withdrawn back
+  out of savings without being paid to HMRC, or a refund received.
 - Record what you actually pay HMRC each January (payment on account 1 +
   prior year's balancing payment) and July (prior year's payment on account
   2) - placeholders show the expected amount, and each box is labelled with

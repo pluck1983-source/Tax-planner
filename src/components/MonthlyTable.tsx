@@ -19,16 +19,19 @@ function NumberCell({
   onChange,
   title,
   placeholder,
+  allowNegative,
 }: {
   value: number;
   onChange: (v: number) => void;
   title?: string;
   placeholder?: string;
+  /** iOS's "decimal" keypad has no minus key, so fields that can legitimately go negative fall back to the default number keypad, which does. */
+  allowNegative?: boolean;
 }) {
   return (
     <input
       type="number"
-      inputMode="decimal"
+      inputMode={allowNegative ? undefined : 'decimal'}
       className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
       value={value === 0 ? '' : value}
       placeholder={placeholder ?? '0'}
@@ -156,6 +159,8 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                   <NumberCell
                     value={m.savedThisMonth}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { savedThisMonth: v })}
+                    allowNegative
+                    title="Negative = money taken back out of savings this month (e.g. a surplus withdrawn but not paid to HMRC)"
                   />
                 </td>
                 <td className="py-1.5 px-2 text-right">
@@ -168,6 +173,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                         : '0'
                     }
                     title={`Actual amount paid to HMRC in ${MONTH_LABELS[m.monthIndex]} ${calendarYearForMonth(startYear, m.monthIndex)} (negative = a refund received). Expected on 31 Jan and 31 Jul.`}
+                    allowNegative
                   />
                   <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
                     {MONTH_LABELS[m.monthIndex]} {calendarYearForMonth(startYear, m.monthIndex)}
