@@ -41,6 +41,7 @@ function App() {
     clearYear,
     deleteYear,
     setOpening,
+    setPoaOverrideForYear,
     replaceState,
   } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
@@ -223,7 +224,11 @@ function App() {
 
               {tab === 'summary' && (
                 <div className="space-y-8">
-                  <YearSummary year={selectedYear} priorYear={priorYear} />
+                  <YearSummary
+                    year={selectedYear}
+                    priorYear={priorYear}
+                    onSetPoaOverride={(override) => setPoaOverrideForYear(selectedYear.id, override)}
+                  />
                   {selectedYear.isIndicative ? (
                     <p className="text-sm text-slate-400">
                       This year is entered as yearly totals, so a month-on-month savings curve isn't shown.

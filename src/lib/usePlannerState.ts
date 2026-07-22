@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { MonthlyEntry, OpeningBalance, PlannerState, TaxYearRates } from './types';
+import type { MonthlyEntry, OpeningBalance, PlannerState, PoaOverride, TaxYearRates } from './types';
 import {
   addNewYear,
   addPreviousYear,
@@ -9,6 +9,7 @@ import {
   saveState,
   setIndicative,
   setOpeningBalance,
+  setPoaOverride,
 } from './storage';
 
 export function usePlannerState() {
@@ -63,6 +64,10 @@ export function usePlannerState() {
     setState((s) => setOpeningBalance(s, balance));
   }, []);
 
+  const setPoaOverrideForYear = useCallback((yearId: string, override: PoaOverride | null) => {
+    setState((s) => setPoaOverride(s, yearId, override));
+  }, []);
+
   const replaceState = useCallback((next: PlannerState) => {
     setState(next);
   }, []);
@@ -78,6 +83,7 @@ export function usePlannerState() {
     clearYear,
     deleteYear,
     setOpening,
+    setPoaOverrideForYear,
     replaceState,
   };
 }

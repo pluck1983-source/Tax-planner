@@ -107,6 +107,20 @@ export interface TaxYearData {
    * HMRC payments in January/July) so every calculation works unchanged.
    */
   isIndicative: boolean;
+  /**
+   * Known actual payment-on-account amounts HMRC has set for this year,
+   * overriding the normal calculation from the prior year's liability - for
+   * when the prior year isn't on record (or isn't accurate) but the actual
+   * POA figures from HMRC's own statement are known.
+   */
+  poaOverride: PoaOverride | null;
+}
+
+export interface PoaOverride {
+  /** Known payment on account 1 amount, due 31 January within the tax year */
+  poa1: number;
+  /** Known payment on account 2 amount, due 31 July just after the tax year ends */
+  poa2: number;
 }
 
 export interface OpeningBalance {

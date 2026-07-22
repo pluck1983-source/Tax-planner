@@ -29,7 +29,7 @@ export function emptyMonths(): MonthlyEntry[] {
 }
 
 export function createYearData(rates: TaxYearRates, isIndicative = false): TaxYearData {
-  return { id: rates.id, rates, months: emptyMonths(), isIndicative };
+  return { id: rates.id, rates, months: emptyMonths(), isIndicative, poaOverride: null };
 }
 
 const RATES_FALLBACK_DEFAULTS: Pick<
@@ -88,6 +88,7 @@ function normalizeState(state: PlannerState): PlannerState {
     years[id] = {
       ...year,
       isIndicative: year.isIndicative ?? false,
+      poaOverride: year.poaOverride ?? null,
       rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
       months: year.months.map((m) => migrateMonth(m)),
     };
@@ -341,6 +342,23 @@ export function deleteYear(state: PlannerState, yearId: string): PlannerState {
  */
 export function setOpeningBalance(state: PlannerState, balance: PlannerState['openingBalance']): PlannerState {
   return { ...state, openingBalance: balance };
+}
+
+/**
+ * Sets (or clears, with `override: null`) known actual payment-on-account
+ * amounts for a year, bypassing the normal calculation from the prior
+ * year's liability - for when the prior year isn't on record (or its
+ * figures aren't accurate) but HMRC's own statement of the actual POA
+ * amounts is known.
+ */
+export function setPoaOverride(
+  state: PlannerState,
+  yearId: string,
+  override: TaxYearData['poaOverride'],
+): PlannerState {
+  const year = state.years[yearId];
+  if (!year) return state;
+  return { ...state, years: { ...state.years, [yearId]: { ...year, poaOverride: override } } };
 }
 
 export function exportStateAsJson(state: PlannerState): string {

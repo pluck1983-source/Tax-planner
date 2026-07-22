@@ -330,6 +330,10 @@ function addYears(isoDate: string, years: number): string {
  * given tax year, based on that year's own liability and the prior year's
  * liability (POAs are always set from the prior year's self-assessment bill).
  *
+ * If the year has a known POA override set (e.g. because the prior year
+ * isn't on record but HMRC's own statement of the actual amounts is known),
+ * that's used instead of calculating from the prior year.
+ *
  * Payments on account are based on income tax only - HMRC excludes Capital
  * Gains Tax from the POA calculation entirely. Any CGT owed is instead added
  * in full to the balancing payment.
@@ -344,25 +348,30 @@ export function calculatePaymentsOnAccount(
   const balancingDueDate = addYears(jan31, 1);
 
   let poaRequired = false;
-  let poaAmountEach = 0;
-  if (priorYear) {
+  let poa1Amount = 0;
+  let poa2Amount = 0;
+  if (currentYear.poaOverride) {
+    poaRequired = true;
+    poa1Amount = currentYear.poaOverride.poa1;
+    poa2Amount = currentYear.poaOverride.poa2;
+  } else if (priorYear) {
     const prior = calculateYearLiability(priorYear);
     const collectedFraction =
       prior.taxBreakdown.totalTax > 0 ? prior.totals.payeTaxDeducted / prior.taxBreakdown.totalTax : 1;
     poaRequired =
       prior.incomeTaxSelfAssessmentLiability > currentYear.rates.poaThreshold &&
       collectedFraction < currentYear.rates.poaSourceCollectionFraction;
-    if (poaRequired) poaAmountEach = prior.incomeTaxSelfAssessmentLiability / 2;
+    if (poaRequired) poa1Amount = poa2Amount = prior.incomeTaxSelfAssessmentLiability / 2;
   }
 
   const poa1: PaymentEvent | null = poaRequired
-    ? { label: 'Payment on account 1', dueDate: jan31, amount: poaAmountEach, yearId: currentYear.id }
+    ? { label: 'Payment on account 1', dueDate: jan31, amount: poa1Amount, yearId: currentYear.id }
     : null;
   const poa2: PaymentEvent | null = poaRequired
-    ? { label: 'Payment on account 2', dueDate: jul31, amount: poaAmountEach, yearId: currentYear.id }
+    ? { label: 'Payment on account 2', dueDate: jul31, amount: poa2Amount, yearId: currentYear.id }
     : null;
 
-  const poaPaid = poaRequired ? poaAmountEach * 2 : 0;
+  const poaPaid = poa1Amount + poa2Amount;
   // Balancing payment reconciles income tax against POAs already paid, then adds CGT in full (CGT is never part of POA).
   const balancingAmount = current.incomeTaxSelfAssessmentLiability - poaPaid + current.capitalGains.tax;
 

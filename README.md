@@ -34,7 +34,11 @@ salary, dividends and other income.
 - Estimates the (likely) **payments on account** and **balancing payment**
   for each year, with due dates, based on the prior year's liability. CGT is
   excluded from payments on account (per HMRC rules) and added in full to
-  the balancing payment.
+  the balancing payment. If the prior year isn't on record (or its figures
+  here don't match reality), you can enter the actual POA1/POA2 amounts
+  HMRC has already set for a year directly - this overrides the
+  calculation from the prior year everywhere it's used (the Summary,
+  Payments ledger, and "paid to HMRC" placeholders).
 - Shows a running month-on-month figure for what you should have saved by
   each point in the year to cover that year's tax bill, and compares it
   against what you've actually logged as saved.

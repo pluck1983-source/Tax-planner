@@ -1,10 +1,12 @@
-import type { TaxYearData } from '../lib/types';
+import { useState } from 'react';
+import type { PoaOverride, TaxYearData } from '../lib/types';
 import { calculatePaymentsOnAccount, calculateYearLiability } from '../lib/taxEngine';
 import { formatDate, formatGBP } from '../lib/format';
 
 interface Props {
   year: TaxYearData;
   priorYear: TaxYearData | null;
+  onSetPoaOverride: (override: PoaOverride | null) => void;
 }
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -17,7 +19,92 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-export function YearSummary({ year, priorYear }: Props) {
+function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSetPoaOverride'>) {
+  const existing = year.poaOverride;
+  const [open, setOpen] = useState(!!existing);
+  const [poa1, setPoa1] = useState(existing?.poa1 ?? 0);
+  const [poa2, setPoa2] = useState(existing?.poa2 ?? 0);
+
+  function handleSave() {
+    onSetPoaOverride({ poa1, poa2 });
+  }
+
+  function handleClear() {
+    onSetPoaOverride(null);
+    setPoa1(0);
+    setPoa2(0);
+    setOpen(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 mb-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300">Known payment on account</h4>
+          <p className="text-xs text-slate-400 mt-0.5 max-w-xl">
+            If you already know the actual payment on account amounts HMRC has set for this year - e.g. from your
+            self-assessment statement - enter them here instead of relying on the prior year's calculation (handy
+            if the prior year isn't on record, or its figures here aren't accurate).
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400 shrink-0"
+        >
+          {open ? 'Hide' : existing ? 'Edit' : 'Set known amounts'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-500 dark:text-slate-400">Payment on account 1 (31 Jan)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={poa1 === 0 ? '' : poa1}
+              placeholder="0"
+              onChange={(e) => setPoa1(e.target.value === '' ? 0 : Number(e.target.value))}
+              className="px-2 py-1.5 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-500 dark:text-slate-400">Payment on account 2 (31 Jul)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={poa2 === 0 ? '' : poa2}
+              placeholder="0"
+              onChange={(e) => setPoa2(e.target.value === '' ? 0 : Number(e.target.value))}
+              className="px-2 py-1.5 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+            />
+          </label>
+          <div className="flex items-end gap-2 col-span-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              {existing ? 'Update' : 'Set'}
+            </button>
+            {existing && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-xs px-3 py-1.5 rounded border border-slate-200 text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
   const liability = calculateYearLiability(year);
   const poa = calculatePaymentsOnAccount(year, priorYear);
   const { totals, taxBreakdown, capitalGains } = liability;
@@ -77,13 +164,20 @@ export function YearSummary({ year, priorYear }: Props) {
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
           Likely payments on account &amp; balancing payment
         </h3>
-        {!priorYear && (
+        <PoaOverridePanel year={year} onSetPoaOverride={onSetPoaOverride} />
+        {year.poaOverride && (
           <p className="text-sm text-slate-400 mb-2">
-            No prior year on record - payments on account can't be estimated without it. Add the previous tax year
-            to see them here.
+            Using the known payment on account amounts you entered above, rather than a calculation from the prior
+            year.
           </p>
         )}
-        {priorYear && !poa.required && (
+        {!year.poaOverride && !priorYear && (
+          <p className="text-sm text-slate-400 mb-2">
+            No prior year on record - payments on account can't be estimated without it. Add the previous tax year,
+            or enter the known amounts above if you have them.
+          </p>
+        )}
+        {!year.poaOverride && priorYear && !poa.required && (
           <p className="text-sm text-slate-400 mb-2">
             Based on {priorYear.rates.label}, payments on account aren't expected to be required for{' '}
             {year.rates.label} (prior liability was under the {formatGBP(year.rates.poaThreshold)} threshold, or
