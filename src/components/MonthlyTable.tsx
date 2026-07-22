@@ -54,8 +54,8 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             <th className="pb-1 px-2 font-medium text-center" colSpan={6}>
               Income
             </th>
-            <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
-              Reliefs (net paid)
+            <th className="pb-1 px-2 font-medium text-center" colSpan={1}>
+              Reliefs
             </th>
             <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
               Gains &amp; savings
@@ -73,8 +73,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             <th className="py-2 px-2 font-medium text-right">Dividends (share dealing)</th>
             <th className="py-2 px-2 font-medium text-right">Other income</th>
             <th className="py-2 px-2 font-medium text-right">Interest (untaxed)</th>
-            <th className="py-2 px-2 font-medium text-right">Pension</th>
-            <th className="py-2 px-2 font-medium text-right">Gift Aid</th>
+            <th className="py-2 px-2 font-medium text-right">Pension (net paid)</th>
             <th className="py-2 px-2 font-medium text-right">Capital gains</th>
             <th className="py-2 px-2 font-medium text-right">Saved this month</th>
             <th className="py-2 px-2 font-medium text-right">Paid to HMRC</th>
@@ -143,13 +142,6 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                 </td>
                 <td className="py-1.5 px-2 text-right">
                   <NumberCell
-                    value={m.giftAid}
-                    onChange={(v) => onUpdateMonth(m.monthIndex, { giftAid: v })}
-                    title="Net Gift Aid donations made this month"
-                  />
-                </td>
-                <td className="py-1.5 px-2 text-right">
-                  <NumberCell
                     value={m.capitalGains}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { capitalGains: v })}
                     title="Net chargeable gains realised this month, before the annual exempt amount"
@@ -204,9 +196,9 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
         <li>
           "Pension" is for personal relief-at-source contributions (e.g. a SIPP) paid from your own money - if
           your salary already has workplace pension contributions taken off before tax (salary sacrifice/net
-          pay), enter your salary after that deduction and leave this blank.
+          pay), enter your salary after that deduction and leave this blank. Enter the net amount you actually
+          paid - it's grossed up automatically.
         </li>
-        <li>"Gift Aid" and "Pension" should both be the net amount you actually paid - they're grossed up automatically.</li>
         <li>
           "Interest (untaxed)" gets the starting rate for savings (up to £5,000 at 0%, reduced by other income) and
           the Personal Savings Allowance (£1,000/£500/£0 depending on your tax band) applied automatically before

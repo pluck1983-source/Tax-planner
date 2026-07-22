@@ -20,7 +20,6 @@ export function emptyMonths(): MonthlyEntry[] {
     otherIncome: 0,
     savingsInterest: 0,
     pensionContribution: 0,
-    giftAid: 0,
     capitalGains: 0,
     savedThisMonth: 0,
     hmrcPaymentMade: 0,
@@ -63,7 +62,6 @@ export function buildPredictionYear(prediction: YearPrediction, sourceYear: TaxY
     otherIncome: spreadAcrossMonths(prediction.otherIncome, m.monthIndex),
     savingsInterest: spreadAcrossMonths(prediction.savingsInterest, m.monthIndex),
     pensionContribution: spreadAcrossMonths(prediction.pensionContribution, m.monthIndex),
-    giftAid: spreadAcrossMonths(prediction.giftAid, m.monthIndex),
     capitalGains: spreadAcrossMonths(prediction.capitalGains, m.monthIndex),
   }));
   return {
@@ -78,9 +76,9 @@ export function buildPredictionYear(prediction: YearPrediction, sourceYear: TaxY
 
 const RATES_FALLBACK_DEFAULTS: Pick<
   TaxYearRates,
-  'pensionGiftAidGrossUpRate' | 'cgtAnnualExemptAmount' | 'cgtRates' | 'savingsStartingRateBandWidth' | 'savingsAllowance'
+  'pensionGrossUpRate' | 'cgtAnnualExemptAmount' | 'cgtRates' | 'savingsStartingRateBandWidth' | 'savingsAllowance'
 > = {
-  pensionGiftAidGrossUpRate: 0.2,
+  pensionGrossUpRate: 0.2,
   cgtAnnualExemptAmount: 3000,
   cgtRates: { basic: 0.18, higher: 0.24 },
   savingsStartingRateBandWidth: 5000,
@@ -90,7 +88,6 @@ const RATES_FALLBACK_DEFAULTS: Pick<
 const MONTH_FALLBACK_DEFAULTS: Pick<
   MonthlyEntry,
   | 'pensionContribution'
-  | 'giftAid'
   | 'capitalGains'
   | 'hmrcPaymentMade'
   | 'dividendsEmployment'
@@ -98,7 +95,6 @@ const MONTH_FALLBACK_DEFAULTS: Pick<
   | 'savingsInterest'
 > = {
   pensionContribution: 0,
-  giftAid: 0,
   capitalGains: 0,
   hmrcPaymentMade: 0,
   dividendsEmployment: 0,
@@ -129,6 +125,7 @@ function migrateMonth(raw: MonthlyEntry): MonthlyEntry {
 function normalizeState(state: PlannerState): PlannerState {
   const years: Record<string, TaxYearData> = {};
   for (const [id, year] of Object.entries(state.years)) {
+    const legacyRates = year.rates as unknown as { pensionGiftAidGrossUpRate?: number };
     years[id] = {
       ...year,
       isIndicative: year.isIndicative ?? false,
@@ -136,7 +133,11 @@ function normalizeState(state: PlannerState): PlannerState {
         ? { ...year.poaOverride, priorYearBalancingPayment: year.poaOverride.priorYearBalancingPayment ?? 0 }
         : null,
       prediction: year.prediction ?? null,
-      rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
+      rates: {
+        ...RATES_FALLBACK_DEFAULTS,
+        ...year.rates,
+        pensionGrossUpRate: year.rates.pensionGrossUpRate ?? legacyRates.pensionGiftAidGrossUpRate ?? 0.2,
+      },
       months: year.months.map((m) => migrateMonth(m)),
     };
   }
@@ -251,7 +252,6 @@ export interface IndicativeTotals {
   otherIncome: number;
   savingsInterest: number;
   pensionContribution: number;
-  giftAid: number;
   capitalGains: number;
   savedThisMonth: number;
   /** Due 31 January - this year's payment on account 1 plus the prior year's balancing payment */
@@ -279,7 +279,6 @@ function buildIndicativeMonths(totals: IndicativeTotals): MonthlyEntry[] {
         otherIncome: totals.otherIncome,
         savingsInterest: totals.savingsInterest,
         pensionContribution: totals.pensionContribution,
-        giftAid: totals.giftAid,
         capitalGains: totals.capitalGains,
         savedThisMonth: totals.savedThisMonth,
       };
@@ -303,7 +302,6 @@ export function getIndicativeTotals(year: TaxYearData): IndicativeTotals {
     otherIncome: bulk.otherIncome,
     savingsInterest: bulk.savingsInterest,
     pensionContribution: bulk.pensionContribution,
-    giftAid: bulk.giftAid,
     capitalGains: bulk.capitalGains,
     savedThisMonth: bulk.savedThisMonth,
     hmrcPaymentJan: jan.hmrcPaymentMade,
@@ -337,7 +335,6 @@ export function setIndicative(state: PlannerState, yearId: string, indicative: b
       otherIncome: totals.otherIncome,
       savingsInterest: totals.savingsInterest,
       pensionContribution: totals.pensionContribution,
-      giftAid: totals.giftAid,
       capitalGains: totals.capitalGains,
       savedThisMonth: totals.savedThisMonth,
       hmrcPaymentJan,
@@ -354,7 +351,6 @@ export function setIndicative(state: PlannerState, yearId: string, indicative: b
       otherIncome: spread(totals.otherIncome, m.monthIndex),
       savingsInterest: spread(totals.savingsInterest, m.monthIndex),
       pensionContribution: spread(totals.pensionContribution, m.monthIndex),
-      giftAid: spread(totals.giftAid, m.monthIndex),
       capitalGains: spread(totals.capitalGains, m.monthIndex),
       savedThisMonth: spread(totals.savedThisMonth, m.monthIndex),
       hmrcPaymentMade: m.monthIndex === 9 ? totals.hmrcPaymentJan : m.monthIndex === 3 ? totals.hmrcPaymentJul : 0,

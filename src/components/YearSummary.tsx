@@ -135,7 +135,7 @@ export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
   const liability = calculateYearLiability(year);
   const poa = calculatePaymentsOnAccount(year, priorYear);
   const { totals, taxBreakdown, capitalGains } = liability;
-  const hasReliefs = totals.pensionContribution > 0 || totals.giftAid > 0;
+  const hasReliefs = totals.pensionContribution > 0;
   const hasGains = totals.capitalGains > 0;
   const hasSavingsInterest = totals.savingsInterest > 0;
 
@@ -158,7 +158,7 @@ export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
             <StatCard
               label="Personal allowance"
               value={formatGBP(taxBreakdown.personalAllowance)}
-              sub={`Basic-rate band extended to ${formatGBP(taxBreakdown.extendedBasicRateBandWidth)} by pension/Gift Aid`}
+              sub={`Basic-rate band extended to ${formatGBP(taxBreakdown.extendedBasicRateBandWidth)} by pension contributions`}
             />
           )}
           {hasSavingsInterest && (

@@ -18,7 +18,7 @@ const BASE_RATES = {
   dividendRates: { basic: 0.0875, higher: 0.3375, additional: 0.3935 },
   poaThreshold: 1000,
   poaSourceCollectionFraction: 0.8,
-  pensionGiftAidGrossUpRate: 0.2,
+  pensionGrossUpRate: 0.2,
   // CGT rates were unified for general assets and residential property from
   // 30 Oct 2024 (Autumn Budget); this default applies from 2024/25 onward.
   cgtAnnualExemptAmount: 3000,

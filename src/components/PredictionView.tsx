@@ -27,7 +27,6 @@ const EMPTY_PREDICTION: YearPrediction = {
   otherIncome: 0,
   savingsInterest: 0,
   pensionContribution: 0,
-  giftAid: 0,
   capitalGains: 0,
 };
 
@@ -144,7 +143,6 @@ export function PredictionView({ year, priorYear, onSetPrediction }: Props) {
           value={prediction.pensionContribution}
           onChange={(v) => update({ pensionContribution: v })}
         />
-        <Field label="Gift Aid" value={prediction.giftAid} onChange={(v) => update({ giftAid: v })} />
         <Field
           label="Capital gains"
           value={prediction.capitalGains}

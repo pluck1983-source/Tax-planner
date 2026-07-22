@@ -127,14 +127,12 @@ export function RatesEditor({ rates, onChange }: Props) {
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">
-          Pension &amp; Gift Aid relief
-        </h3>
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Pension relief</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Field
             label="Gross-up rate"
-            value={rates.pensionGiftAidGrossUpRate}
-            onChange={(v) => onChange({ pensionGiftAidGrossUpRate: v })}
+            value={rates.pensionGrossUpRate}
+            onChange={(v) => onChange({ pensionGrossUpRate: v })}
             suffix="decimal, e.g. 0.2 = net ÷ 0.8"
           />
         </div>

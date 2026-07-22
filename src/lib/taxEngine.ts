@@ -26,7 +26,7 @@ function taxThroughBands(amount: number, bands: Band[]): { tax: number; perBand:
   return { tax, perBand };
 }
 
-/** Personal allowance after tapering, based on adjusted net income (net of pension/Gift Aid grossing up). */
+/** Personal allowance after tapering, based on adjusted net income (net of grossed-up pension contributions). */
 export function personalAllowanceFor(rates: TaxYearRates, adjustedNetIncome: number): number {
   const excess = Math.max(0, adjustedNetIncome - rates.paTaperThreshold);
   const reduction = excess * rates.paTaperRate;
@@ -36,15 +36,13 @@ export function personalAllowanceFor(rates: TaxYearRates, adjustedNetIncome: num
 export interface IncomeReliefs {
   /** Net amount paid into a relief-at-source personal pension (e.g. a SIPP) */
   pensionContribution: number;
-  /** Net Gift Aid donations */
-  giftAid: number;
 }
 
 export interface IncomeTaxBreakdown {
   totalIncome: number;
   adjustedNetIncome: number;
   personalAllowance: number;
-  /** Basic-rate band width after extending it for grossed-up pension contributions and Gift Aid */
+  /** Basic-rate band width after extending it for grossed-up pension contributions */
   extendedBasicRateBandWidth: number;
   /** How much of the extended basic-rate band is left after non-dividend, savings and dividend income - available to CGT at the lower rate */
   remainingBasicRateBandWidth: number;
@@ -64,27 +62,26 @@ export interface IncomeTaxBreakdown {
  * untaxed savings interest (stacked next), and dividend income (stacked
  * last, after the personal allowance and other bands are used up).
  *
- * Personal pension contributions (relief at source) and Gift Aid donations
- * both extend the basic-rate (and therefore higher-rate) band by their
- * grossed-up value, and reduce adjusted net income for the personal
- * allowance taper - giving higher/additional rate relief on top of the
- * basic-rate relief already added by the pension provider/charity.
+ * Personal pension contributions (relief at source) extend the basic-rate
+ * (and therefore higher-rate) band by their grossed-up value, and reduce
+ * adjusted net income for the personal allowance taper - giving
+ * higher/additional rate relief on top of the basic-rate relief already
+ * added by the pension provider.
  */
 export function calculateIncomeTax(
   rates: TaxYearRates,
   nonDividendIncome: number,
   savingsIncome: number,
   dividendIncome: number,
-  reliefs: IncomeReliefs = { pensionContribution: 0, giftAid: 0 },
+  reliefs: IncomeReliefs = { pensionContribution: 0 },
 ): IncomeTaxBreakdown {
   const totalIncome =
     Math.max(0, nonDividendIncome) + Math.max(0, savingsIncome) + Math.max(0, dividendIncome);
-  const grossUpRate = rates.pensionGiftAidGrossUpRate;
+  const grossUpRate = rates.pensionGrossUpRate;
   const grossPension = Math.max(0, reliefs.pensionContribution) / (1 - grossUpRate);
-  const grossGiftAid = Math.max(0, reliefs.giftAid) / (1 - grossUpRate);
-  const extendedBasicRateBandWidth = rates.basicRateBandWidth + grossPension + grossGiftAid;
+  const extendedBasicRateBandWidth = rates.basicRateBandWidth + grossPension;
 
-  const adjustedNetIncome = Math.max(0, totalIncome - grossPension - grossGiftAid);
+  const adjustedNetIncome = Math.max(0, totalIncome - grossPension);
   const pa = personalAllowanceFor(rates, adjustedNetIncome);
 
   const bandsFor = (rateSet: { basic: number; higher: number; additional: number }): Band[] => [
@@ -221,7 +218,6 @@ export interface MonthlyTotals {
   otherIncome: number;
   savingsInterest: number;
   pensionContribution: number;
-  giftAid: number;
   capitalGains: number;
   savedThisMonth: number;
   hmrcPaymentMade: number;
@@ -244,7 +240,6 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       otherIncome: acc.otherIncome + m.otherIncome,
       savingsInterest: acc.savingsInterest + m.savingsInterest,
       pensionContribution: acc.pensionContribution + m.pensionContribution,
-      giftAid: acc.giftAid + m.giftAid,
       capitalGains: acc.capitalGains + m.capitalGains,
       savedThisMonth: acc.savedThisMonth + m.savedThisMonth,
       hmrcPaymentMade: acc.hmrcPaymentMade + m.hmrcPaymentMade,
@@ -257,7 +252,6 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       otherIncome: 0,
       savingsInterest: 0,
       pensionContribution: 0,
-      giftAid: 0,
       capitalGains: 0,
       savedThisMonth: 0,
       hmrcPaymentMade: 0,
@@ -279,7 +273,6 @@ function computeReliefsAndCalc(year: TaxYearData, totals: MonthlyTotals) {
   const nonDividendIncome = totals.paye + totals.otherIncome;
   const reliefs: IncomeReliefs = {
     pensionContribution: totals.pensionContribution,
-    giftAid: totals.giftAid,
   };
   const taxBreakdown = calculateIncomeTax(
     year.rates,
@@ -693,7 +686,6 @@ function monthHasData(m: MonthlyEntry): boolean {
     m.otherIncome !== 0 ||
     m.savingsInterest !== 0 ||
     m.pensionContribution !== 0 ||
-    m.giftAid !== 0 ||
     m.capitalGains !== 0 ||
     m.savedThisMonth !== 0 ||
     m.hmrcPaymentMade !== 0

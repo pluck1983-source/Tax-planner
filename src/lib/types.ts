@@ -39,10 +39,10 @@ export interface TaxYearRates {
 
   /**
    * Rate used to gross up net personal pension contributions (relief at
-   * source) and Gift Aid donations back to their gross value - e.g. a net
-   * £80 donation grosses up to £100 at a 0.2 (20%) rate.
+   * source) back to their gross value - e.g. a net £80 contribution
+   * grosses up to £100 at a 0.2 (20%) rate.
    */
-  pensionGiftAidGrossUpRate: number;
+  pensionGrossUpRate: number;
 
   /** Annual exempt amount for Capital Gains Tax */
   cgtAnnualExemptAmount: number;
@@ -80,8 +80,6 @@ export interface MonthlyEntry {
   savingsInterest: number;
   /** Net amount paid into a personal (relief-at-source) pension this month, e.g. a SIPP */
   pensionContribution: number;
-  /** Net Gift Aid donations made this month */
-  giftAid: number;
   /** Net chargeable capital gains realised this month (before the annual exempt amount) */
   capitalGains: number;
   savedThisMonth: number;
@@ -131,7 +129,6 @@ export interface YearPrediction {
   otherIncome: number;
   savingsInterest: number;
   pensionContribution: number;
-  giftAid: number;
   capitalGains: number;
 }
 

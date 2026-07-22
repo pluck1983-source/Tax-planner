@@ -88,12 +88,6 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
           onChange={(v) => onUpdateMonth(0, { pensionContribution: v })}
         />
         <Field
-          label="Gift Aid"
-          value={totals.giftAid}
-          title="Net Gift Aid donations across the year"
-          onChange={(v) => onUpdateMonth(0, { giftAid: v })}
-        />
-        <Field
           label="Capital gains"
           value={totals.capitalGains}
           title="Net chargeable gains realised across the year, before the annual exempt amount"
