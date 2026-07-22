@@ -14,7 +14,8 @@ export function emptyMonths(): MonthlyEntry[] {
     monthIndex: i,
     paye: 0,
     payeTaxDeducted: null,
-    dividends: 0,
+    dividendsEmployment: 0,
+    dividendsShareDealing: 0,
     otherIncome: 0,
     pensionContribution: 0,
     giftAid: 0,
@@ -40,13 +41,35 @@ const RATES_FALLBACK_DEFAULTS: Pick<
 
 const MONTH_FALLBACK_DEFAULTS: Pick<
   MonthlyEntry,
-  'pensionContribution' | 'giftAid' | 'capitalGains' | 'hmrcPaymentMade'
+  | 'pensionContribution'
+  | 'giftAid'
+  | 'capitalGains'
+  | 'hmrcPaymentMade'
+  | 'dividendsEmployment'
+  | 'dividendsShareDealing'
 > = {
   pensionContribution: 0,
   giftAid: 0,
   capitalGains: 0,
   hmrcPaymentMade: 0,
+  dividendsEmployment: 0,
+  dividendsShareDealing: 0,
 };
+
+/**
+ * Migrates a month from the older single combined "dividends" field into
+ * "dividendsEmployment" (a reasonable default, since most of what this
+ * planner tracked before the split was company dividends) so a saved total
+ * doesn't silently vanish just because the field was split in two.
+ */
+function migrateMonth(raw: MonthlyEntry): MonthlyEntry {
+  const legacy = raw as unknown as { dividends?: number };
+  const merged: MonthlyEntry = { ...MONTH_FALLBACK_DEFAULTS, ...raw };
+  if (typeof legacy.dividends === 'number' && merged.dividendsEmployment === 0 && merged.dividendsShareDealing === 0) {
+    merged.dividendsEmployment = legacy.dividends;
+  }
+  return merged;
+}
 
 /**
  * Backfills fields that didn't exist in older saved/exported data (e.g. from
@@ -59,7 +82,7 @@ function normalizeState(state: PlannerState): PlannerState {
     years[id] = {
       ...year,
       rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
-      months: year.months.map((m) => ({ ...MONTH_FALLBACK_DEFAULTS, ...m })),
+      months: year.months.map((m) => migrateMonth(m)),
     };
   }
   return { ...state, years };

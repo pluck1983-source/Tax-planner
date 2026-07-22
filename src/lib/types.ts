@@ -62,7 +62,10 @@ export interface MonthlyEntry {
   monthIndex: number;
   paye: number;
   payeTaxDeducted: number | null;
-  dividends: number;
+  /** Dividends from your own company, as director/shareholder-employee */
+  dividendsEmployment: number;
+  /** Dividends from other shareholdings, e.g. a personal share-dealing/trading account */
+  dividendsShareDealing: number;
   otherIncome: number;
   /** Net amount paid into a personal (relief-at-source) pension this month, e.g. a SIPP */
   pensionContribution: number;

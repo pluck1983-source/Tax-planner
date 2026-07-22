@@ -6,9 +6,10 @@ salary, dividends and other income.
 
 ## What it does
 
-- Log salary (PAYE), dividends, other taxable income, personal pension
-  contributions, Gift Aid donations and capital gains month by month for
-  each UK tax year (6 April - 5 April).
+- Log salary (PAYE), dividends (tracked separately as company dividends vs.
+  share-dealing dividends, for reference - both are taxed identically),
+  other taxable income, personal pension contributions, Gift Aid donations
+  and capital gains month by month for each UK tax year (6 April - 5 April).
 - Calculates income tax and dividend tax using the current rest-of-UK
   (England/Wales/NI) rates and bands, including the personal allowance
   taper and dividend allowance.

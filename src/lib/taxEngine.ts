@@ -162,13 +162,19 @@ export function calculateCapitalGainsTax(
 export interface MonthlyTotals {
   paye: number;
   payeTaxDeducted: number;
-  dividends: number;
+  dividendsEmployment: number;
+  dividendsShareDealing: number;
   otherIncome: number;
   pensionContribution: number;
   giftAid: number;
   capitalGains: number;
   savedThisMonth: number;
   hmrcPaymentMade: number;
+}
+
+/** Total dividends regardless of source - UK dividend tax doesn't distinguish where they came from. */
+export function totalDividends(totals: MonthlyTotals): number {
+  return totals.dividendsEmployment + totals.dividendsShareDealing;
 }
 
 export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex?: number): MonthlyTotals {
@@ -178,7 +184,8 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       paye: acc.paye + m.paye,
       payeTaxDeducted:
         acc.payeTaxDeducted + (m.payeTaxDeducted ?? estimatePayeTax(rates, m.paye)),
-      dividends: acc.dividends + m.dividends,
+      dividendsEmployment: acc.dividendsEmployment + m.dividendsEmployment,
+      dividendsShareDealing: acc.dividendsShareDealing + m.dividendsShareDealing,
       otherIncome: acc.otherIncome + m.otherIncome,
       pensionContribution: acc.pensionContribution + m.pensionContribution,
       giftAid: acc.giftAid + m.giftAid,
@@ -189,7 +196,8 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
     {
       paye: 0,
       payeTaxDeducted: 0,
-      dividends: 0,
+      dividendsEmployment: 0,
+      dividendsShareDealing: 0,
       otherIncome: 0,
       pensionContribution: 0,
       giftAid: 0,
@@ -216,7 +224,7 @@ function computeReliefsAndCalc(year: TaxYearData, totals: MonthlyTotals) {
     pensionContribution: totals.pensionContribution,
     giftAid: totals.giftAid,
   };
-  const taxBreakdown = calculateIncomeTax(year.rates, nonDividendIncome, totals.dividends, reliefs);
+  const taxBreakdown = calculateIncomeTax(year.rates, nonDividendIncome, totalDividends(totals), reliefs);
   const capitalGains = calculateCapitalGainsTax(
     year.rates,
     totals.capitalGains,

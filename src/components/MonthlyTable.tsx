@@ -41,7 +41,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
         <thead>
           <tr className="text-left text-slate-400 text-xs">
             <th></th>
-            <th className="pb-1 px-2 font-medium text-center" colSpan={3}>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={5}>
               Income
             </th>
             <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
@@ -59,7 +59,8 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             <th className="py-2 pr-2 font-medium">Month</th>
             <th className="py-2 px-2 font-medium text-right">Salary (PAYE)</th>
             <th className="py-2 px-2 font-medium text-right">PAYE tax deducted</th>
-            <th className="py-2 px-2 font-medium text-right">Dividends</th>
+            <th className="py-2 px-2 font-medium text-right">Dividends (company)</th>
+            <th className="py-2 px-2 font-medium text-right">Dividends (share dealing)</th>
             <th className="py-2 px-2 font-medium text-right">Other income</th>
             <th className="py-2 px-2 font-medium text-right">Pension</th>
             <th className="py-2 px-2 font-medium text-right">Gift Aid</th>
@@ -96,7 +97,18 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                   />
                 </td>
                 <td className="py-1.5 px-2 text-right">
-                  <NumberCell value={m.dividends} onChange={(v) => onUpdateMonth(m.monthIndex, { dividends: v })} />
+                  <NumberCell
+                    value={m.dividendsEmployment}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { dividendsEmployment: v })}
+                    title="Dividends from your own company, as director/shareholder-employee"
+                  />
+                </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
+                    value={m.dividendsShareDealing}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { dividendsShareDealing: v })}
+                    title="Dividends from other shareholdings, e.g. a personal share-dealing/trading account"
+                  />
                 </td>
                 <td className="py-1.5 px-2 text-right">
                   <NumberCell
@@ -160,6 +172,10 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
         <li>
           Leave "PAYE tax deducted" blank to auto-estimate it from salary at a standard tax code (shown as the
           placeholder) - enter the actual figure from your payslip for accuracy.
+        </li>
+        <li>
+          The two dividend columns are for keeping track of where dividends came from - UK dividend tax doesn't
+          distinguish the source, so they're taxed identically and simply added together.
         </li>
         <li>
           "Pension" is for personal relief-at-source contributions (e.g. a SIPP) paid from your own money - if
