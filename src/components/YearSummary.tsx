@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PoaOverride, TaxYearData } from '../lib/types';
 import { calculatePaymentsOnAccount, calculateYearLiability } from '../lib/taxEngine';
+import { startYearFromYearId } from '../lib/defaultRates';
 import { formatDate, formatGBP } from '../lib/format';
 
 interface Props {
@@ -40,15 +41,19 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
     setOpen(false);
   }
 
+  const startYear = startYearFromYearId(year.id);
+  const dueCalendarYear = startYear + 1;
+  const priorYearLabel = `${startYear - 1}/${String(startYear).slice(-2)}`;
+
   return (
     <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 mb-3">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300">Known payment on account</h4>
           <p className="text-xs text-slate-400 mt-0.5 max-w-xl">
-            If you already know the actual payment on account amounts HMRC has set for this year - e.g. from your
-            self-assessment statement - enter them here instead of relying on the prior year's calculation (handy
-            if the prior year isn't on record, or its figures here aren't accurate).
+            If you already know the actual payment on account amounts HMRC has set for {year.rates.label} - e.g.
+            from your self-assessment statement - enter them here instead of relying on the prior year's
+            calculation (handy if the prior year isn't on record, or its figures here aren't accurate).
           </p>
         </div>
         <button
@@ -63,7 +68,9 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
       {open && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-500 dark:text-slate-400">Payment on account 1 (31 Jan)</span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {year.rates.label} payment on account 1 (due 31 Jan {dueCalendarYear})
+            </span>
             <input
               type="number"
               inputMode="decimal"
@@ -74,7 +81,9 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-500 dark:text-slate-400">Payment on account 2 (31 Jul)</span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {year.rates.label} payment on account 2 (due 31 Jul {dueCalendarYear})
+            </span>
             <input
               type="number"
               inputMode="decimal"
@@ -86,12 +95,12 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
           </label>
           <label className="flex flex-col gap-1 text-sm col-span-2">
             <span className="text-slate-500 dark:text-slate-400">
-              Prior year's balancing payment, if untracked (also due 31 Jan)
+              {priorYearLabel} balancing payment, if untracked (also due 31 Jan {dueCalendarYear})
             </span>
             <input
               type="number"
               inputMode="decimal"
-              title="If an earlier year isn't tracked in this app but its balancing payment is also due this same 31 January, enter it here so it's not mistaken for an overpayment of this year's payment on account"
+              title={`If ${priorYearLabel} isn't tracked in this app but its balancing payment is also due this same 31 January, enter it here so it's not mistaken for an overpayment of ${year.rates.label}'s payment on account`}
               value={priorYearBalancingPayment === 0 ? '' : priorYearBalancingPayment}
               placeholder="0"
               onChange={(e) => setPriorYearBalancingPayment(e.target.value === '' ? 0 : Number(e.target.value))}
