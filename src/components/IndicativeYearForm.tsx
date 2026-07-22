@@ -2,6 +2,7 @@ import type { MonthlyEntry, PlannerState, TaxYearData } from '../lib/types';
 import { getIndicativeTotals } from '../lib/storage';
 import { startYearFromYearId } from '../lib/defaultRates';
 import { calculateExpectedHmrcPayment, estimatePayeTax } from '../lib/taxEngine';
+import { formatGBP } from '../lib/format';
 
 interface Props {
   year: TaxYearData;
@@ -119,6 +120,12 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
             title="The prior year's payment on account 2, due 31 July"
             onChange={(v) => onUpdateMonth(3, { hmrcPaymentMade: v })}
           />
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-500 dark:text-slate-400">Total paid to HMRC</span>
+            <div className="px-2 py-1.5 rounded border border-slate-100 bg-slate-50 text-right tabular-nums font-medium dark:bg-slate-900 dark:border-slate-800">
+              {formatGBP(totals.hmrcPaymentJan + totals.hmrcPaymentJul)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
