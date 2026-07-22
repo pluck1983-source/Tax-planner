@@ -55,6 +55,12 @@ salary, dividends and other income.
   figures for every earlier year - the running totals reset to those
   figures at that year boundary and ignore history before it. Clear it any
   time to go back to full-history calculation.
+- The Timeline shows a **saving date** - the effective date its figures are
+  accurate as of, treated as the end of the last month with data actually
+  entered (e.g. 31 August), not the 1st of the following month, since
+  salary/dividends are typically confirmed at month-end. When a starting
+  point is set, the "since" figures also show the exact date they're
+  calculated from (the chosen year's start date).
 - The **Payments** tab is a single chronological ledger of every payment on
   account and balancing payment across every tax year on record, grouped by
   due date, showing what's owed vs. what you've actually recorded as paid

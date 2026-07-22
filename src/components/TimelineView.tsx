@@ -11,8 +11,9 @@ import {
   YAxis,
 } from 'recharts';
 import type { OpeningBalance, PlannerState } from '../lib/types';
-import { calculateTimeline } from '../lib/taxEngine';
-import { formatGBP } from '../lib/format';
+import { calculateTimeline, endOfMonthDate, findLatestDataPoint } from '../lib/taxEngine';
+import { startYearFromYearId } from '../lib/defaultRates';
+import { formatDate, formatGBP } from '../lib/format';
 
 interface Props {
   state: PlannerState;
@@ -140,6 +141,15 @@ export function TimelineView({ state, onSetOpeningBalance }: Props) {
   const latest = lastRealIndex >= 0 ? timeline[lastRealIndex] : undefined;
   const latestProjected = timeline.at(-1);
   const openingLabel = state.openingBalance ? state.years[state.openingBalance.yearId]?.rates.label : null;
+  // Salary/dividends are typically confirmed at month-end, so that's treated as the
+  // effective "as of" date for the latest month with actual data entered, rather than
+  // the 1st of the following month - and rather than the trailing empty months every
+  // year is pre-populated with.
+  const latestWithData = findLatestDataPoint(state, timeline) ?? latest;
+  const asOfDate = latestWithData
+    ? endOfMonthDate(startYearFromYearId(latestWithData.yearId), latestWithData.monthIndex)
+    : null;
+  const sinceDate = state.openingBalance ? state.years[state.openingBalance.yearId]?.rates.startDate : null;
 
   const hasProjection = timeline.some((p) => p.projected);
 
@@ -169,25 +179,37 @@ export function TimelineView({ state, onSetOpeningBalance }: Props) {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
+              label="Saving date"
+              value={asOfDate ? formatDate(asOfDate) : '-'}
+              sub={
+                latestWithData
+                  ? `Effective date for ${latestWithData.label}'s figures - month-end, not the 1st of the next month`
+                  : undefined
+              }
+            />
+            <StatCard
               label={openingLabel ? `Total tax liability since ${openingLabel}` : 'Total tax liability to date'}
               value={formatGBP(latest.cumulativeLiability)}
+              sub={sinceDate ? `Since ${formatDate(sinceDate)}` : undefined}
             />
             <StatCard
               label={openingLabel ? `Total paid since ${openingLabel}` : 'Total paid to HMRC'}
               value={formatGBP(latest.cumulativePaidToHmrc)}
+              sub={sinceDate ? `Since ${formatDate(sinceDate)}` : undefined}
             />
+            <StatCard
+              label={openingLabel ? `Total saved since ${openingLabel}` : 'Total saved'}
+              value={formatGBP(latest.cumulativeSaved)}
+              sub={sinceDate ? `Since ${formatDate(sinceDate)}` : undefined}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
               label="Outstanding liability"
               value={formatGBP(latest.outstandingLiability)}
               sub="Owed, not yet paid"
             />
-            <StatCard
-              label={openingLabel ? `Total saved since ${openingLabel}` : 'Total saved'}
-              value={formatGBP(latest.cumulativeSaved)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard label="Bank balance" value={formatGBP(latest.bankBalance)} sub="Saved minus paid out" />
             <StatCard
               label={latest.bankBalance - latest.outstandingLiability >= 0 ? 'Surplus' : 'Shortfall'}

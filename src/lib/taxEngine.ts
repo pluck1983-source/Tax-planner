@@ -548,8 +548,21 @@ export interface TimelinePoint {
   projected?: boolean;
 }
 
-function calendarYearFor(startYear: number, monthIndex: number): number {
+export function calendarYearFor(startYear: number, monthIndex: number): number {
   return monthIndex <= 8 ? startYear : startYear + 1;
+}
+
+/**
+ * The calendar date treated as "effective" for a given month's figures -
+ * the last day of that calendar month (e.g. 30 April), not the 1st of the
+ * following month. Salary and dividends are typically confirmed/paid at
+ * month-end, so that's when that month's saved amount is realistically on
+ * hand, not the day after.
+ */
+export function endOfMonthDate(startYear: number, monthIndex: number): string {
+  const calendarYear = calendarYearFor(startYear, monthIndex);
+  const jsMonth = (monthIndex + 3) % 12; // MONTH_LABELS[0] is April, JS month index 3
+  return new Date(Date.UTC(calendarYear, jsMonth + 1, 0)).toISOString().slice(0, 10);
 }
 
 /**
@@ -651,6 +664,54 @@ export function calculateTimeline(state: PlannerState): TimelinePoint[] {
   }
 
   return points;
+}
+
+/** True if a month has any non-default figure entered. */
+function monthHasData(m: MonthlyEntry): boolean {
+  return (
+    m.paye !== 0 ||
+    (m.payeTaxDeducted !== null && m.payeTaxDeducted !== 0) ||
+    m.dividendsEmployment !== 0 ||
+    m.dividendsShareDealing !== 0 ||
+    m.otherIncome !== 0 ||
+    m.savingsInterest !== 0 ||
+    m.pensionContribution !== 0 ||
+    m.giftAid !== 0 ||
+    m.capitalGains !== 0 ||
+    m.savedThisMonth !== 0 ||
+    m.hmrcPaymentMade !== 0
+  );
+}
+
+/**
+ * Finds the latest month (across every year, chronologically) that actually
+ * has data entered - every year is pre-populated with 12 months regardless
+ * of how much has been filled in, so the literal last point in the timeline
+ * is often just an empty trailing month rather than anything meaningful.
+ * Indicative years store their whole-year total in a single month slot, so
+ * for those, the year's own final month is used instead once any figure is
+ * set, since the total represents the whole year rather than just April.
+ */
+export function findLatestDataPoint(state: PlannerState, timeline: TimelinePoint[]): TimelinePoint | undefined {
+  const realPoints = timeline.filter((p) => !p.projected);
+  const sortedYearIds = [...state.yearOrder].sort(
+    (a, b) => startYearFromYearId(a) - startYearFromYearId(b),
+  );
+
+  for (let yi = sortedYearIds.length - 1; yi >= 0; yi--) {
+    const yearId = sortedYearIds[yi];
+    const year = state.years[yearId];
+    if (!year.months.some(monthHasData)) continue;
+
+    if (year.isIndicative) {
+      return realPoints.find((p) => p.yearId === yearId && p.monthIndex === 11);
+    }
+
+    const maxMonthIndex = Math.max(...year.months.filter(monthHasData).map((m) => m.monthIndex));
+    return realPoints.find((p) => p.yearId === yearId && p.monthIndex === maxMonthIndex);
+  }
+
+  return undefined;
 }
 
 export interface LedgerItem {
