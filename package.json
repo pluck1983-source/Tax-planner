@@ -7,15 +7,20 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npm run build && npx cap sync ios",
+    "ios": "npm run cap:sync && npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.10.0",
     "uuid": "^14.0.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

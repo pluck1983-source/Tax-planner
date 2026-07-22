@@ -9,8 +9,8 @@ salary, dividends and other income.
 - Log salary (PAYE), dividends (tracked separately as company dividends vs.
   share-dealing dividends, for reference - both are taxed identically),
   other taxable income, untaxed UK bank/building society interest, personal
-  pension contributions, Gift Aid donations and capital gains month by
-  month for each UK tax year (6 April - 5 April).
+  pension contributions and capital gains month by month for each UK tax
+  year (6 April - 5 April).
 - Calculates income tax and dividend tax using the current rest-of-UK
   (England/Wales/NI) rates and bands, including the personal allowance
   taper and dividend allowance. Any personal allowance left unused by
@@ -23,10 +23,10 @@ salary, dividends and other income.
   Allowance (£1,000/£500/£0 depending on which tax band your total income
   falls into) applied automatically, stacking after salary/other income but
   before dividends.
-- Personal (relief-at-source) pension contributions and Gift Aid donations
-  extend your basic/higher-rate bands and reduce adjusted net income for the
-  personal allowance taper, giving higher/additional-rate relief on top of
-  the basic-rate relief added automatically by the pension provider/charity.
+- Personal (relief-at-source) pension contributions extend your
+  basic/higher-rate bands and reduce adjusted net income for the personal
+  allowance taper, giving higher/additional-rate relief on top of the
+  basic-rate relief added automatically by the pension provider.
 - Calculates Capital Gains Tax separately, using whatever's left of your
   basic-rate band after income and dividends, and the annual exempt amount.
 - Works out the self-assessment liability owed on top of tax already
@@ -130,3 +130,55 @@ npm run dev      # start the dev server
 npm run build    # type-check and build for production
 npm run lint     # oxlint
 ```
+
+## Running as a native iOS app (Xcode)
+
+The app is wrapped with [Capacitor](https://capacitorjs.com), which loads
+the same web build inside a thin native shell - no code changes needed
+elsewhere in the app. The `ios/` folder is committed to the repo and uses
+Swift Package Manager, not CocoaPods, so there's no `pod install` step.
+
+**On your Mac:**
+
+1. Clone the repo and check out this branch, then install dependencies:
+   ```bash
+   npm install
+   ```
+2. Build the web app and copy it into the iOS project:
+   ```bash
+   npm run cap:sync
+   ```
+   Run this again after every code change you want to test on device/in
+   Xcode - it rebuilds `dist/` and copies it into `ios/App/App/public`.
+3. Open the Xcode project:
+   ```bash
+   npx cap open ios
+   ```
+   (or open `ios/App/App.xcodeproj` directly in Xcode)
+4. In Xcode, select the **App** target → **Signing & Capabilities** tab,
+   and choose your Apple ID under **Team** (add your Apple ID in
+   Xcode → Settings → Accounts first if you haven't already). Xcode will
+   generate a free personal provisioning profile automatically.
+5. Pick a simulator or your plugged-in iPhone from the device dropdown at
+   the top, then press the Run button (▶) to build and launch it.
+
+**To submit to the App Store**, you'll additionally need:
+- An [Apple Developer Program](https://developer.apple.com/programs/)
+  membership ($99/year) - free personal accounts can run the app on your
+  own device but can't submit to the App Store.
+- In Xcode: **Product → Archive**, then use the Organizer window that
+  opens to **Distribute App → App Store Connect**.
+- An App Store Connect listing (app name, screenshots, description,
+  privacy policy - straightforward here since there's no backend, no
+  accounts, and no tracking; all data stays on-device) created at
+  [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
+
+The bundle identifier is `com.pluck1983.taxplanner` and the display name
+is "Tax Planner" (both set in `capacitor.config.ts` and the Xcode
+project) - change either before submitting if you'd prefer something
+else; the bundle ID especially can't be changed later once published.
+The app icon is generated from the existing brand mark
+(`public/favicon.svg`) - replace
+`ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`
+(a single 1024×1024 PNG, no transparency) with something custom if
+you'd like a different one.
