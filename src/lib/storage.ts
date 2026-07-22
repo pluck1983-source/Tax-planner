@@ -5,6 +5,7 @@ import {
   startYearFromYearId,
   yearIdFromStartYear,
 } from './defaultRates';
+import { sumMonths } from './taxEngine';
 
 const STORAGE_KEY = 'tax-planner-state-v1';
 const DEFAULT_KNOWN_IDS = new Set(DEFAULT_TAX_YEARS.map((y) => y.id));
@@ -26,8 +27,8 @@ export function emptyMonths(): MonthlyEntry[] {
   }));
 }
 
-export function createYearData(rates: TaxYearRates): TaxYearData {
-  return { id: rates.id, rates, months: emptyMonths() };
+export function createYearData(rates: TaxYearRates, isIndicative = false): TaxYearData {
+  return { id: rates.id, rates, months: emptyMonths(), isIndicative };
 }
 
 const RATES_FALLBACK_DEFAULTS: Pick<
@@ -81,6 +82,7 @@ function normalizeState(state: PlannerState): PlannerState {
   for (const [id, year] of Object.entries(state.years)) {
     years[id] = {
       ...year,
+      isIndicative: year.isIndicative ?? false,
       rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
       months: year.months.map((m) => migrateMonth(m)),
     };
@@ -177,6 +179,144 @@ export function addPreviousYear(state: PlannerState): PlannerState {
     yearOrder: [id, ...state.yearOrder],
     selectedYearId: id,
   };
+}
+
+export interface IndicativeTotals {
+  paye: number;
+  payeTaxDeducted: number | null;
+  dividendsEmployment: number;
+  dividendsShareDealing: number;
+  otherIncome: number;
+  pensionContribution: number;
+  giftAid: number;
+  capitalGains: number;
+  savedThisMonth: number;
+  /** Due 31 January - this year's payment on account 1 plus the prior year's balancing payment */
+  hmrcPaymentJan: number;
+  /** Due 31 July - the prior year's payment on account 2 */
+  hmrcPaymentJul: number;
+}
+
+/**
+ * Indicative years store their totals via the same 12-month structure as
+ * every other year (so nothing else in the app needs to know the
+ * difference) - bulk figures live in April, and HMRC payments live in
+ * January/July specifically, since the payments ledger looks them up by
+ * exact due date.
+ */
+function buildIndicativeMonths(totals: IndicativeTotals): MonthlyEntry[] {
+  return emptyMonths().map((m) => {
+    if (m.monthIndex === 0) {
+      return {
+        ...m,
+        paye: totals.paye,
+        payeTaxDeducted: totals.payeTaxDeducted,
+        dividendsEmployment: totals.dividendsEmployment,
+        dividendsShareDealing: totals.dividendsShareDealing,
+        otherIncome: totals.otherIncome,
+        pensionContribution: totals.pensionContribution,
+        giftAid: totals.giftAid,
+        capitalGains: totals.capitalGains,
+        savedThisMonth: totals.savedThisMonth,
+      };
+    }
+    if (m.monthIndex === 9) return { ...m, hmrcPaymentMade: totals.hmrcPaymentJan };
+    if (m.monthIndex === 3) return { ...m, hmrcPaymentMade: totals.hmrcPaymentJul };
+    return m;
+  });
+}
+
+/** Reads the current totals back out of an indicative year's month data. */
+export function getIndicativeTotals(year: TaxYearData): IndicativeTotals {
+  const bulk = year.months.find((m) => m.monthIndex === 0)!;
+  const jan = year.months.find((m) => m.monthIndex === 9)!;
+  const jul = year.months.find((m) => m.monthIndex === 3)!;
+  return {
+    paye: bulk.paye,
+    payeTaxDeducted: bulk.payeTaxDeducted,
+    dividendsEmployment: bulk.dividendsEmployment,
+    dividendsShareDealing: bulk.dividendsShareDealing,
+    otherIncome: bulk.otherIncome,
+    pensionContribution: bulk.pensionContribution,
+    giftAid: bulk.giftAid,
+    capitalGains: bulk.capitalGains,
+    savedThisMonth: bulk.savedThisMonth,
+    hmrcPaymentJan: jan.hmrcPaymentMade,
+    hmrcPaymentJul: jul.hmrcPaymentMade,
+  };
+}
+
+/**
+ * Switches a year between month-by-month and indicative (yearly totals)
+ * entry. Going indicative collapses the current monthly figures into a
+ * single aggregate (monthly detail is lost, though the totals aren't);
+ * going back to monthly spreads the totals evenly across 12 months as a
+ * starting point to fine-tune.
+ */
+export function setIndicative(state: PlannerState, yearId: string, indicative: boolean): PlannerState {
+  const year = state.years[yearId];
+  if (!year || year.isIndicative === indicative) return state;
+
+  let months: MonthlyEntry[];
+  if (indicative) {
+    const totals = sumMonths(year.months, year.rates);
+    const hmrcPaymentJan = year.months.find((m) => m.monthIndex === 9)?.hmrcPaymentMade ?? 0;
+    const hmrcPaymentJul = year.months.find((m) => m.monthIndex === 3)?.hmrcPaymentMade ?? 0;
+    months = buildIndicativeMonths({
+      paye: totals.paye,
+      // An annual PAYE-deducted override doesn't map cleanly onto monthly
+      // auto-estimates - revert to auto-estimating from the total salary.
+      payeTaxDeducted: null,
+      dividendsEmployment: totals.dividendsEmployment,
+      dividendsShareDealing: totals.dividendsShareDealing,
+      otherIncome: totals.otherIncome,
+      pensionContribution: totals.pensionContribution,
+      giftAid: totals.giftAid,
+      capitalGains: totals.capitalGains,
+      savedThisMonth: totals.savedThisMonth,
+      hmrcPaymentJan,
+      hmrcPaymentJul,
+    });
+  } else {
+    const totals = getIndicativeTotals(year);
+    const spread = (amount: number, index: number) => {
+      const base = Math.floor(amount / 12);
+      const remainder = amount - base * 12;
+      // Put the rounding remainder in the last month so the total is exact.
+      return index === 11 ? base + remainder : base;
+    };
+    months = emptyMonths().map((m) => ({
+      ...m,
+      paye: spread(totals.paye, m.monthIndex),
+      dividendsEmployment: spread(totals.dividendsEmployment, m.monthIndex),
+      dividendsShareDealing: spread(totals.dividendsShareDealing, m.monthIndex),
+      otherIncome: spread(totals.otherIncome, m.monthIndex),
+      pensionContribution: spread(totals.pensionContribution, m.monthIndex),
+      giftAid: spread(totals.giftAid, m.monthIndex),
+      capitalGains: spread(totals.capitalGains, m.monthIndex),
+      savedThisMonth: spread(totals.savedThisMonth, m.monthIndex),
+      hmrcPaymentMade: m.monthIndex === 9 ? totals.hmrcPaymentJan : m.monthIndex === 3 ? totals.hmrcPaymentJul : 0,
+    }));
+  }
+
+  return { ...state, years: { ...state.years, [yearId]: { ...year, isIndicative: indicative, months } } };
+}
+
+/** Resets a year's data back to empty while keeping the year, its rates, and its indicative/monthly mode. */
+export function clearYearData(state: PlannerState, yearId: string): PlannerState {
+  const year = state.years[yearId];
+  if (!year) return state;
+  return { ...state, years: { ...state.years, [yearId]: { ...year, months: emptyMonths() } } };
+}
+
+/** Removes a year entirely from the planner. */
+export function deleteYear(state: PlannerState, yearId: string): PlannerState {
+  if (!state.years[yearId]) return state;
+  const years = { ...state.years };
+  delete years[yearId];
+  const yearOrder = state.yearOrder.filter((id) => id !== yearId);
+  const selectedYearId = state.selectedYearId === yearId ? (yearOrder[0] ?? null) : state.selectedYearId;
+  return { years, yearOrder, selectedYearId };
 }
 
 export function exportStateAsJson(state: PlannerState): string {

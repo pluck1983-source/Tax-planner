@@ -28,13 +28,19 @@ export function YearSidebar({ state, onSelect, onAddYear, onAddPriorYear }: Prop
             key={id}
             type="button"
             onClick={() => onSelect(id)}
-            className={`text-left px-3 py-2 rounded-lg border whitespace-nowrap transition-colors ${
+            className={`text-left px-3 py-2 rounded-lg border whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               isSelected
                 ? 'bg-slate-900 text-white border-slate-900 dark:bg-indigo-600 dark:border-indigo-600'
                 : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
             }`}
           >
             {year.rates.label}
+            {year.isIndicative && (
+              <span
+                title="Indicative year (yearly totals)"
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-white/70' : 'bg-indigo-400'}`}
+              />
+            )}
           </button>
         );
       })}

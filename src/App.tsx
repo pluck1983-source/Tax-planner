@@ -2,8 +2,10 @@ import { useRef, useState } from 'react';
 import { usePlannerState } from './lib/usePlannerState';
 import { startYearFromYearId, yearIdFromStartYear } from './lib/defaultRates';
 import { exportStateAsJson, importStateFromJson } from './lib/storage';
+import type { TaxYearData } from './lib/types';
 import { YearSidebar } from './components/YearSidebar';
 import { MonthlyTable } from './components/MonthlyTable';
+import { IndicativeYearForm } from './components/IndicativeYearForm';
 import { YearSummary } from './components/YearSummary';
 import { SavingsChart } from './components/SavingsChart';
 import { RatesEditor } from './components/RatesEditor';
@@ -12,14 +14,68 @@ import { PaymentsLedger } from './components/PaymentsLedger';
 
 type Tab = 'monthly' | 'summary' | 'timeline' | 'payments' | 'rates';
 
+function hasMultiMonthDetail(year: TaxYearData): boolean {
+  const monthsWithData = year.months.filter(
+    (m) =>
+      m.paye ||
+      m.dividendsEmployment ||
+      m.dividendsShareDealing ||
+      m.otherIncome ||
+      m.pensionContribution ||
+      m.giftAid ||
+      m.capitalGains ||
+      m.savedThisMonth,
+  );
+  return monthsWithData.length > 1;
+}
+
 function App() {
-  const { state, selectYear, addYear, addPriorYear, updateMonth, updateRates, replaceState } = usePlannerState();
+  const {
+    state,
+    selectYear,
+    addYear,
+    addPriorYear,
+    updateMonth,
+    updateRates,
+    toggleIndicative,
+    clearYear,
+    deleteYear,
+    replaceState,
+  } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedYear = state.selectedYearId ? state.years[state.selectedYearId] : null;
   const priorYearId = selectedYear ? yearIdFromStartYear(startYearFromYearId(selectedYear.id) - 1) : null;
   const priorYear = priorYearId ? (state.years[priorYearId] ?? null) : null;
+
+  function handleToggleIndicative() {
+    if (!selectedYear) return;
+    const goingIndicative = !selectedYear.isIndicative;
+    if (goingIndicative && hasMultiMonthDetail(selectedYear)) {
+      const ok = window.confirm(
+        `Switch ${selectedYear.rates.label} to indicative (yearly totals) entry? Your monthly figures will be combined into yearly totals - the month-by-month breakdown will be lost, though the totals themselves are kept.`,
+      );
+      if (!ok) return;
+    }
+    toggleIndicative(selectedYear.id, goingIndicative);
+  }
+
+  function handleClearYear() {
+    if (!selectedYear) return;
+    const ok = window.confirm(
+      `Clear all data for ${selectedYear.rates.label}? Every month will be reset to zero. This can't be undone.`,
+    );
+    if (ok) clearYear(selectedYear.id);
+  }
+
+  function handleDeleteYear() {
+    if (!selectedYear) return;
+    const ok = window.confirm(
+      `Delete ${selectedYear.rates.label} entirely? This removes all its data and can't be undone.`,
+    );
+    if (ok) deleteYear(selectedYear.id);
+  }
 
   function handleExport() {
     const blob = new Blob([exportStateAsJson(state)], { type: 'application/json' });
@@ -85,18 +141,49 @@ function App() {
           {!selectedYear && <p className="text-slate-400">Select or add a tax year to get started.</p>}
           {selectedYear && (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">{selectedYear.rates.label} tax year</h2>
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold">{selectedYear.rates.label} tax year</h2>
+                  {selectedYear.isIndicative && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      Indicative
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400">
                   {new Date(selectedYear.rates.startDate).toLocaleDateString('en-GB')} -{' '}
                   {new Date(selectedYear.rates.endDate).toLocaleDateString('en-GB')}
                 </p>
               </div>
 
+              <div className="flex items-center gap-2 mb-4 no-print">
+                <button
+                  type="button"
+                  onClick={handleToggleIndicative}
+                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400"
+                >
+                  {selectedYear.isIndicative ? 'Switch to monthly entry' : 'Switch to indicative (yearly totals)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearYear}
+                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400"
+                >
+                  Clear data
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteYear}
+                  className="text-xs px-2.5 py-1 rounded border border-rose-200 text-rose-600 hover:border-rose-400 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950"
+                >
+                  Delete year
+                </button>
+              </div>
+
               <div className="flex gap-1 mb-5 border-b border-slate-200 dark:border-slate-800 no-print">
                 {(
                   [
-                    ['monthly', 'Monthly entries'],
+                    ['monthly', selectedYear.isIndicative ? 'Yearly totals' : 'Monthly entries'],
                     ['summary', 'Summary & payments'],
                     ['timeline', 'Timeline'],
                     ['payments', 'Payments'],
@@ -118,18 +205,31 @@ function App() {
                 ))}
               </div>
 
-              {tab === 'monthly' && (
-                <MonthlyTable
-                  year={selectedYear}
-                  state={state}
-                  onUpdateMonth={(monthIndex, patch) => updateMonth(selectedYear.id, monthIndex, patch)}
-                />
-              )}
+              {tab === 'monthly' &&
+                (selectedYear.isIndicative ? (
+                  <IndicativeYearForm
+                    year={selectedYear}
+                    state={state}
+                    onUpdateMonth={(monthIndex, patch) => updateMonth(selectedYear.id, monthIndex, patch)}
+                  />
+                ) : (
+                  <MonthlyTable
+                    year={selectedYear}
+                    state={state}
+                    onUpdateMonth={(monthIndex, patch) => updateMonth(selectedYear.id, monthIndex, patch)}
+                  />
+                ))}
 
               {tab === 'summary' && (
                 <div className="space-y-8">
                   <YearSummary year={selectedYear} priorYear={priorYear} />
-                  <SavingsChart year={selectedYear} />
+                  {selectedYear.isIndicative ? (
+                    <p className="text-sm text-slate-400">
+                      This year is entered as yearly totals, so a month-on-month savings curve isn't shown.
+                    </p>
+                  ) : (
+                    <SavingsChart year={selectedYear} />
+                  )}
                 </div>
               )}
 

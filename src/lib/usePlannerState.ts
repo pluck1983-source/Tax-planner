@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MonthlyEntry, PlannerState, TaxYearRates } from './types';
-import { addNewYear, addPreviousYear, loadState, saveState } from './storage';
+import {
+  addNewYear,
+  addPreviousYear,
+  clearYearData,
+  deleteYear as deleteYearFromState,
+  loadState,
+  saveState,
+  setIndicative,
+} from './storage';
 
 export function usePlannerState() {
   const [state, setState] = useState<PlannerState>(() => loadState());
@@ -38,9 +46,32 @@ export function usePlannerState() {
     });
   }, []);
 
+  const toggleIndicative = useCallback((yearId: string, indicative: boolean) => {
+    setState((s) => setIndicative(s, yearId, indicative));
+  }, []);
+
+  const clearYear = useCallback((yearId: string) => {
+    setState((s) => clearYearData(s, yearId));
+  }, []);
+
+  const deleteYear = useCallback((yearId: string) => {
+    setState((s) => deleteYearFromState(s, yearId));
+  }, []);
+
   const replaceState = useCallback((next: PlannerState) => {
     setState(next);
   }, []);
 
-  return { state, selectYear, addYear, addPriorYear, updateMonth, updateRates, replaceState };
+  return {
+    state,
+    selectYear,
+    addYear,
+    addPriorYear,
+    updateMonth,
+    updateRates,
+    toggleIndicative,
+    clearYear,
+    deleteYear,
+    replaceState,
+  };
 }

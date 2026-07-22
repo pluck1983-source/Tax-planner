@@ -44,6 +44,15 @@ salary, dividends and other income.
   of assuming none are required. Every previous year stays on record, and
   tax rates/bands are editable per year so you can update them once
   HMRC/the Budget confirms figures for a new year.
+- Any year can be switched to **indicative** entry - yearly totals instead
+  of 12 months of detail - handy for an earlier year you just want to seed
+  without the busywork. Switch back to monthly entry any time (totals
+  spread evenly across the months as a starting point). Indicative years
+  are marked with a badge and show a simplified totals form in place of the
+  monthly table.
+- Each year can be cleared (reset its data, keep the year) or deleted
+  entirely (remove it from the planner) from its own header, both behind a
+  confirmation prompt so it isn't done by accident.
 - All data is stored locally in your browser (localStorage). Use
   Export/Import to back up or move your data between browsers/devices.
 

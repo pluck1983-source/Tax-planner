@@ -88,6 +88,14 @@ export interface TaxYearData {
   id: string;
   rates: TaxYearRates;
   months: MonthlyEntry[];
+  /**
+   * When true, this year is entered as yearly totals rather than
+   * month-by-month - useful for an earlier year you just want to seed for
+   * payments-on-account purposes without logging every month. The totals
+   * are still stored via the same `months` array (bulk figures in April,
+   * HMRC payments in January/July) so every calculation works unchanged.
+   */
+  isIndicative: boolean;
 }
 
 export interface PlannerState {
