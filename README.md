@@ -38,7 +38,11 @@ salary, dividends and other income.
   here don't match reality), you can enter the actual POA1/POA2 amounts
   HMRC has already set for a year directly - this overrides the
   calculation from the prior year everywhere it's used (the Summary,
-  Payments ledger, and "paid to HMRC" placeholders).
+  Payments ledger, and "paid to HMRC" placeholders). If an even earlier
+  year isn't tracked at all but its balancing payment is also due the same
+  31 January as this year's payment on account 1 (HMRC always combines
+  them into one figure), you can enter that too, so a real payment covering
+  both isn't wrongly flagged as overpaying this year's payment on account.
 - Shows a running month-on-month figure for what you should have saved by
   each point in the year to cover that year's tax bill, and compares it
   against what you've actually logged as saved.

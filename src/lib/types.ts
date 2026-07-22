@@ -121,6 +121,14 @@ export interface PoaOverride {
   poa1: number;
   /** Known payment on account 2 amount, due 31 July just after the tax year ends */
   poa2: number;
+  /**
+   * A known balancing payment for an earlier, untracked tax year that's also
+   * due the same 31 January as this year's payment on account 1 - HMRC
+   * always combines them into one amount on your statement. Shown as an
+   * extra line on the same due date, but not counted towards this year's
+   * own payments on account, since it isn't this year's money.
+   */
+  priorYearBalancingPayment: number;
 }
 
 export interface OpeningBalance {

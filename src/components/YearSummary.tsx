@@ -24,15 +24,19 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
   const [open, setOpen] = useState(!!existing);
   const [poa1, setPoa1] = useState(existing?.poa1 ?? 0);
   const [poa2, setPoa2] = useState(existing?.poa2 ?? 0);
+  const [priorYearBalancingPayment, setPriorYearBalancingPayment] = useState(
+    existing?.priorYearBalancingPayment ?? 0,
+  );
 
   function handleSave() {
-    onSetPoaOverride({ poa1, poa2 });
+    onSetPoaOverride({ poa1, poa2, priorYearBalancingPayment });
   }
 
   function handleClear() {
     onSetPoaOverride(null);
     setPoa1(0);
     setPoa2(0);
+    setPriorYearBalancingPayment(0);
     setOpen(false);
   }
 
@@ -77,6 +81,20 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
               value={poa2 === 0 ? '' : poa2}
               placeholder="0"
               onChange={(e) => setPoa2(e.target.value === '' ? 0 : Number(e.target.value))}
+              className="px-2 py-1.5 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm col-span-2">
+            <span className="text-slate-500 dark:text-slate-400">
+              Prior year's balancing payment, if untracked (also due 31 Jan)
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              title="If an earlier year isn't tracked in this app but its balancing payment is also due this same 31 January, enter it here so it's not mistaken for an overpayment of this year's payment on account"
+              value={priorYearBalancingPayment === 0 ? '' : priorYearBalancingPayment}
+              placeholder="0"
+              onChange={(e) => setPriorYearBalancingPayment(e.target.value === '' ? 0 : Number(e.target.value))}
               className="px-2 py-1.5 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
             />
           </label>
@@ -212,6 +230,15 @@ export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
                   <td className="py-1.5 pr-2">{poa.poa2.label}</td>
                   <td className="py-1.5 px-2">{formatDate(poa.poa2.dueDate)}</td>
                   <td className="py-1.5 pl-2 text-right tabular-nums">{formatGBP(poa.poa2.amount)}</td>
+                </tr>
+              )}
+              {poa.untrackedPriorBalancing && (
+                <tr className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="py-1.5 pr-2">{poa.untrackedPriorBalancing.label}</td>
+                  <td className="py-1.5 px-2">{formatDate(poa.untrackedPriorBalancing.dueDate)}</td>
+                  <td className="py-1.5 pl-2 text-right tabular-nums">
+                    {formatGBP(poa.untrackedPriorBalancing.amount)}
+                  </td>
                 </tr>
               )}
               <tr className="border-t border-slate-100 dark:border-slate-800 font-medium">

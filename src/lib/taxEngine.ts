@@ -316,6 +316,12 @@ export interface PaymentsOnAccountSchedule {
   poa1: PaymentEvent | null;
   poa2: PaymentEvent | null;
   balancingPayment: PaymentEvent;
+  /**
+   * A known balancing payment for an earlier, untracked year, due the same
+   * 31 January as poa1 - not counted in totalDueForYear (it isn't this
+   * year's money), just surfaced so it can be added to the same due date.
+   */
+  untrackedPriorBalancing: PaymentEvent | null;
   totalDueForYear: number;
 }
 
@@ -371,6 +377,15 @@ export function calculatePaymentsOnAccount(
     ? { label: 'Payment on account 2', dueDate: jul31, amount: poa2Amount, yearId: currentYear.id }
     : null;
 
+  const untrackedPriorBalancing: PaymentEvent | null = currentYear.poaOverride?.priorYearBalancingPayment
+    ? {
+        label: "Prior year's balancing payment (untracked)",
+        dueDate: jan31,
+        amount: currentYear.poaOverride.priorYearBalancingPayment,
+        yearId: currentYear.id,
+      }
+    : null;
+
   const poaPaid = poa1Amount + poa2Amount;
   // Balancing payment reconciles income tax against POAs already paid, then adds CGT in full (CGT is never part of POA).
   const balancingAmount = current.incomeTaxSelfAssessmentLiability - poaPaid + current.capitalGains.tax;
@@ -387,6 +402,7 @@ export function calculatePaymentsOnAccount(
     poa1,
     poa2,
     balancingPayment,
+    untrackedPriorBalancing,
     totalDueForYear: poaPaid + balancingAmount,
   };
 }
@@ -768,6 +784,7 @@ export function calculatePaymentLedger(state: PlannerState): LedgerGroup[] {
     };
     if (schedule.poa1) add(schedule.poa1);
     if (schedule.poa2) add(schedule.poa2);
+    if (schedule.untrackedPriorBalancing) add(schedule.untrackedPriorBalancing);
     add(schedule.balancingPayment);
   }
 

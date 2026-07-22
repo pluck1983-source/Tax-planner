@@ -88,7 +88,9 @@ function normalizeState(state: PlannerState): PlannerState {
     years[id] = {
       ...year,
       isIndicative: year.isIndicative ?? false,
-      poaOverride: year.poaOverride ?? null,
+      poaOverride: year.poaOverride
+        ? { ...year.poaOverride, priorYearBalancingPayment: year.poaOverride.priorYearBalancingPayment ?? 0 }
+        : null,
       rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
       months: year.months.map((m) => migrateMonth(m)),
     };
