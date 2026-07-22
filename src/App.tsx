@@ -112,14 +112,14 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold">Director Tax Planner</h1>
             <p className="text-xs text-slate-400">
               Monthly PAYE, dividends &amp; other income - your self-assessment savings target
             </p>
           </div>
-          <div className="flex gap-2 no-print">
+          <div className="flex gap-2 no-print shrink-0">
             <button
               type="button"
               onClick={handleExport}
@@ -161,31 +161,31 @@ function App() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 mb-4 no-print">
+              <div className="flex items-center gap-2 mb-4 no-print overflow-x-auto [-webkit-overflow-scrolling:touch]">
                 <button
                   type="button"
                   onClick={handleToggleIndicative}
-                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400"
+                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 whitespace-nowrap shrink-0"
                 >
                   {selectedYear.isIndicative ? 'Switch to monthly entry' : 'Switch to indicative (yearly totals)'}
                 </button>
                 <button
                   type="button"
                   onClick={handleClearYear}
-                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400"
+                  className="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 whitespace-nowrap shrink-0"
                 >
                   Clear data
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteYear}
-                  className="text-xs px-2.5 py-1 rounded border border-rose-200 text-rose-600 hover:border-rose-400 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950"
+                  className="text-xs px-2.5 py-1 rounded border border-rose-200 text-rose-600 hover:border-rose-400 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950 whitespace-nowrap shrink-0"
                 >
                   Delete year
                 </button>
               </div>
 
-              <div className="flex gap-1 mb-5 border-b border-slate-200 dark:border-slate-800 no-print">
+              <div className="flex gap-1 mb-5 border-b border-slate-200 dark:border-slate-800 no-print overflow-x-auto [-webkit-overflow-scrolling:touch]">
                 {(
                   [
                     ['monthly', selectedYear.isIndicative ? 'Yearly totals' : 'Monthly entries'],
@@ -200,7 +200,7 @@ function App() {
                     key={id}
                     type="button"
                     onClick={() => setTab(id)}
-                    className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+                    className={`px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap shrink-0 ${
                       tab === id
                         ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-medium'
                         : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'

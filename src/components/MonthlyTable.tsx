@@ -32,7 +32,7 @@ function NumberCell({
     <input
       type="number"
       inputMode={allowNegative ? undefined : 'decimal'}
-      className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+      className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
       value={value === 0 ? '' : value}
       placeholder={placeholder ?? '0'}
       title={title}
@@ -96,7 +96,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                   <input
                     type="number"
                     inputMode="decimal"
-                    className="w-20 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+                    className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
                     value={m.payeTaxDeducted ?? ''}
                     placeholder={estimatedPaye ? String(Math.round(estimatedPaye)) : '0'}
                     onChange={(e) =>

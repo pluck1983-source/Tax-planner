@@ -9,6 +9,16 @@ body {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
+/* iOS Safari auto-zooms the page when a focused form field is under 16px -
+   the layout uses text-sm (14px) for compact table inputs, so pin the
+   effective size back up just for form controls without touching the
+   surrounding label/table text. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
 /* Keep content clear of the iPhone notch/Dynamic Island and home indicator
    when installed and running fullscreen from the home screen. */
 @media (display-mode: standalone) {

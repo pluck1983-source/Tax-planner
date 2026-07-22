@@ -110,6 +110,18 @@ Capital Gains Tax on residential property usually has its own 60-day
 reporting/payment deadline, separate from self-assessment - this planner
 shows it together with the balancing payment for simplicity.
 
+### iOS/mobile notes
+
+- The header, year selector, tab bar and action buttons all fit or scroll
+  cleanly on a phone-width screen rather than clipping or wrapping.
+- Form fields use 16px text so iOS Safari doesn't auto-zoom the page when
+  one is focused.
+- Installed to the home screen, it respects the notch/Dynamic Island and
+  home indicator safe areas and runs without Safari's browser chrome.
+- The Monthly entries table still scrolls horizontally on a phone - it's
+  a genuinely wide dataset (12 fields per month), and a card-per-month
+  layout would be the next step if that's worth the redesign.
+
 ## Development
 
 ```bash
