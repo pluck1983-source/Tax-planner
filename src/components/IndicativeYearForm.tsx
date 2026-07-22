@@ -1,5 +1,6 @@
 import type { MonthlyEntry, PlannerState, TaxYearData } from '../lib/types';
 import { getIndicativeTotals } from '../lib/storage';
+import { startYearFromYearId } from '../lib/defaultRates';
 import { calculateExpectedHmrcPayment, estimatePayeTax } from '../lib/taxEngine';
 
 interface Props {
@@ -40,6 +41,7 @@ function Field({
 export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
   const totals = getIndicativeTotals(year);
   const estimatedPaye = estimatePayeTax(year.rates, totals.paye);
+  const startYear = startYearFromYearId(year.id);
 
   return (
     <div className="space-y-6">
@@ -70,6 +72,12 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
         />
         <Field label="Other income" value={totals.otherIncome} onChange={(v) => onUpdateMonth(0, { otherIncome: v })} />
         <Field
+          label="Interest (untaxed)"
+          value={totals.savingsInterest}
+          title="Untaxed UK bank/building society interest across the year"
+          onChange={(v) => onUpdateMonth(0, { savingsInterest: v })}
+        />
+        <Field
           label="Pension contributions"
           value={totals.pensionContribution}
           title="Net amount paid into a personal (relief-at-source) pension across the year"
@@ -98,14 +106,14 @@ export function IndicativeYearForm({ year, state, onUpdateMonth }: Props) {
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Paid to HMRC</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field
-            label="Paid in January"
+            label={`Paid in January ${startYear + 1}`}
             value={totals.hmrcPaymentJan}
             placeholder={String(Math.round(calculateExpectedHmrcPayment(state, year.id, 9)))}
             title="Payment on account 1 + the prior year's balancing payment, both due 31 January"
             onChange={(v) => onUpdateMonth(9, { hmrcPaymentMade: v })}
           />
           <Field
-            label="Paid in July"
+            label={`Paid in July ${startYear}`}
             value={totals.hmrcPaymentJul}
             placeholder={String(Math.round(calculateExpectedHmrcPayment(state, year.id, 3)))}
             title="The prior year's payment on account 2, due 31 July"

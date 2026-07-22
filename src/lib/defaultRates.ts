@@ -23,6 +23,10 @@ const BASE_RATES = {
   // 30 Oct 2024 (Autumn Budget); this default applies from 2024/25 onward.
   cgtAnnualExemptAmount: 3000,
   cgtRates: { basic: 0.18, higher: 0.24 },
+  // Starting rate for savings (£5,000 band) and Personal Savings Allowance
+  // have been stable at these figures since 2016/17.
+  savingsStartingRateBandWidth: 5000,
+  savingsAllowance: { basic: 1000, higher: 500, additional: 0 },
 };
 
 function makeYear(startYear: number, overrides: Partial<TaxYearRates> = {}): TaxYearRates {

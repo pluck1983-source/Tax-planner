@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { MonthlyEntry, PlannerState, TaxYearRates } from './types';
+import type { MonthlyEntry, OpeningBalance, PlannerState, TaxYearRates } from './types';
 import {
   addNewYear,
   addPreviousYear,
@@ -8,6 +8,7 @@ import {
   loadState,
   saveState,
   setIndicative,
+  setOpeningBalance,
 } from './storage';
 
 export function usePlannerState() {
@@ -58,6 +59,10 @@ export function usePlannerState() {
     setState((s) => deleteYearFromState(s, yearId));
   }, []);
 
+  const setOpening = useCallback((balance: OpeningBalance | null) => {
+    setState((s) => setOpeningBalance(s, balance));
+  }, []);
+
   const replaceState = useCallback((next: PlannerState) => {
     setState(next);
   }, []);
@@ -72,6 +77,7 @@ export function usePlannerState() {
     toggleIndicative,
     clearYear,
     deleteYear,
+    setOpening,
     replaceState,
   };
 }

@@ -1,6 +1,12 @@
 import type { PlannerState, TaxYearData } from '../lib/types';
 import { MONTH_LABELS } from '../lib/types';
+import { startYearFromYearId } from '../lib/defaultRates';
 import { calculateExpectedHmrcPayment, estimatePayeTax } from '../lib/taxEngine';
+
+/** 0=Apr..8=Dec fall in the tax year's start calendar year; 9=Jan..11=Mar fall in the year after. */
+function calendarYearForMonth(startYear: number, monthIndex: number): number {
+  return monthIndex <= 8 ? startYear : startYear + 1;
+}
 
 interface Props {
   year: TaxYearData;
@@ -34,6 +40,7 @@ function NumberCell({
 
 export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
   const months = [...year.months].sort((a, b) => a.monthIndex - b.monthIndex);
+  const startYear = startYearFromYearId(year.id);
 
   return (
     <div className="overflow-x-auto">
@@ -41,7 +48,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
         <thead>
           <tr className="text-left text-slate-400 text-xs">
             <th></th>
-            <th className="pb-1 px-2 font-medium text-center" colSpan={5}>
+            <th className="pb-1 px-2 font-medium text-center" colSpan={6}>
               Income
             </th>
             <th className="pb-1 px-2 font-medium text-center" colSpan={2}>
@@ -62,6 +69,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             <th className="py-2 px-2 font-medium text-right">Dividends (company)</th>
             <th className="py-2 px-2 font-medium text-right">Dividends (share dealing)</th>
             <th className="py-2 px-2 font-medium text-right">Other income</th>
+            <th className="py-2 px-2 font-medium text-right">Interest (untaxed)</th>
             <th className="py-2 px-2 font-medium text-right">Pension</th>
             <th className="py-2 px-2 font-medium text-right">Gift Aid</th>
             <th className="py-2 px-2 font-medium text-right">Capital gains</th>
@@ -118,6 +126,13 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                 </td>
                 <td className="py-1.5 px-2 text-right">
                   <NumberCell
+                    value={m.savingsInterest}
+                    onChange={(v) => onUpdateMonth(m.monthIndex, { savingsInterest: v })}
+                    title="Untaxed UK bank/building society interest - most interest is now paid gross, without tax deducted at source"
+                  />
+                </td>
+                <td className="py-1.5 px-2 text-right">
+                  <NumberCell
                     value={m.pensionContribution}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { pensionContribution: v })}
                     title="Net amount paid into a personal (relief-at-source) pension, e.g. a SIPP - not workplace contributions taken from gross pay"
@@ -152,8 +167,11 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                         ? String(Math.round(calculateExpectedHmrcPayment(state, year.id, m.monthIndex)))
                         : '0'
                     }
-                    title="Actual amount paid to HMRC this month (negative = a refund received). Expected on 31 Jan and 31 Jul."
+                    title={`Actual amount paid to HMRC in ${MONTH_LABELS[m.monthIndex]} ${calendarYearForMonth(startYear, m.monthIndex)} (negative = a refund received). Expected on 31 Jan and 31 Jul.`}
                   />
+                  <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                    {MONTH_LABELS[m.monthIndex]} {calendarYearForMonth(startYear, m.monthIndex)}
+                  </div>
                 </td>
                 <td className="py-1.5 pl-2">
                   <input
@@ -183,6 +201,11 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
           pay), enter your salary after that deduction and leave this blank.
         </li>
         <li>"Gift Aid" and "Pension" should both be the net amount you actually paid - they're grossed up automatically.</li>
+        <li>
+          "Interest (untaxed)" gets the starting rate for savings (up to £5,000 at 0%, reduced by other income) and
+          the Personal Savings Allowance (£1,000/£500/£0 depending on your tax band) applied automatically before
+          the rest is taxed.
+        </li>
         <li>
           "Paid to HMRC" is what you actually sent them - the placeholder in January and July shows the expected
           payment on account/balancing payment based on figures entered so far. See the Timeline tab for the

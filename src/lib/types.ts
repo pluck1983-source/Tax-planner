@@ -50,6 +50,15 @@ export interface TaxYearRates {
     basic: number;
     higher: number;
   };
+
+  /** Starting rate for savings: width of the 0% band, reduced £1 for £1 by non-savings income using it up */
+  savingsStartingRateBandWidth: number;
+  /** Personal Savings Allowance, which depends on which band the taxpayer's total income falls into */
+  savingsAllowance: {
+    basic: number;
+    higher: number;
+    additional: number;
+  };
 }
 
 export const MONTH_LABELS = [
@@ -67,6 +76,8 @@ export interface MonthlyEntry {
   /** Dividends from other shareholdings, e.g. a personal share-dealing/trading account */
   dividendsShareDealing: number;
   otherIncome: number;
+  /** Untaxed UK bank/building society interest - most interest is now paid gross, without tax deducted at source */
+  savingsInterest: number;
   /** Net amount paid into a personal (relief-at-source) pension this month, e.g. a SIPP */
   pensionContribution: number;
   /** Net Gift Aid donations made this month */
@@ -98,8 +109,25 @@ export interface TaxYearData {
   isIndicative: boolean;
 }
 
+export interface OpeningBalance {
+  /** The tax year this reconciled starting point applies from (i.e. as of the start of this year) */
+  yearId: string;
+  /** Known actual bank balance set aside for tax as of the start of that year */
+  savedBalance: number;
+  /** Known actual amount still owed to HMRC as of the start of that year */
+  outstandingLiability: number;
+}
+
 export interface PlannerState {
   years: Record<string, TaxYearData>;
   yearOrder: string[];
   selectedYearId: string | null;
+  /**
+   * An optional reconciled starting point for the Timeline's running totals,
+   * so you don't have to reconstruct exact historical figures for every
+   * earlier year - just set what you know is true now and carry on from
+   * there. Only affects the Timeline's cumulative figures, not per-year tax
+   * or payments-on-account calculations.
+   */
+  openingBalance: OpeningBalance | null;
 }

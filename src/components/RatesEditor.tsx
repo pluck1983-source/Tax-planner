@@ -77,6 +77,43 @@ export function RatesEditor({ rates, onChange }: Props) {
       </section>
 
       <section>
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Savings interest</h3>
+        <p className="text-xs text-slate-400 mb-3 max-w-2xl">
+          Untaxed interest stacks after salary/other income but before dividends. The starting rate band is reduced
+          £1 for £1 by non-savings income; the Personal Savings Allowance used depends on which band your total
+          income falls into.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Field
+            label="Starting rate band width"
+            value={rates.savingsStartingRateBandWidth}
+            onChange={(v) => onChange({ savingsStartingRateBandWidth: v })}
+            suffix="£"
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <Field
+            label="Allowance (basic rate)"
+            value={rates.savingsAllowance.basic}
+            onChange={(v) => onChange({ savingsAllowance: { ...rates.savingsAllowance, basic: v } })}
+            suffix="£/yr"
+          />
+          <Field
+            label="Allowance (higher rate)"
+            value={rates.savingsAllowance.higher}
+            onChange={(v) => onChange({ savingsAllowance: { ...rates.savingsAllowance, higher: v } })}
+            suffix="£/yr"
+          />
+          <Field
+            label="Allowance (additional rate)"
+            value={rates.savingsAllowance.additional}
+            onChange={(v) => onChange({ savingsAllowance: { ...rates.savingsAllowance, additional: v } })}
+            suffix="£/yr"
+          />
+        </div>
+      </section>
+
+      <section>
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Payments on account</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Field label="Threshold" value={rates.poaThreshold} onChange={(v) => onChange({ poaThreshold: v })} suffix="£" />

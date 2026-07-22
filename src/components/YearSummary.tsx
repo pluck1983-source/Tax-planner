@@ -23,6 +23,7 @@ export function YearSummary({ year, priorYear }: Props) {
   const { totals, taxBreakdown, capitalGains } = liability;
   const hasReliefs = totals.pensionContribution > 0 || totals.giftAid > 0;
   const hasGains = totals.capitalGains > 0;
+  const hasSavingsInterest = totals.savingsInterest > 0;
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ export function YearSummary({ year, priorYear }: Props) {
         />
       </div>
 
-      {(hasGains || hasReliefs) && (
+      {(hasGains || hasReliefs || hasSavingsInterest) && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {hasReliefs && (
             <StatCard
@@ -45,6 +46,18 @@ export function YearSummary({ year, priorYear }: Props) {
               value={formatGBP(taxBreakdown.personalAllowance)}
               sub={`Basic-rate band extended to ${formatGBP(taxBreakdown.extendedBasicRateBandWidth)} by pension/Gift Aid`}
             />
+          )}
+          {hasSavingsInterest && (
+            <StatCard
+              label="Tax-free on interest"
+              value={formatGBP(
+                taxBreakdown.startingRateForSavingsRemaining + taxBreakdown.personalSavingsAllowance,
+              )}
+              sub={`${formatGBP(taxBreakdown.startingRateForSavingsRemaining)} starting rate band + ${formatGBP(taxBreakdown.personalSavingsAllowance)} Personal Savings Allowance`}
+            />
+          )}
+          {hasSavingsInterest && (
+            <StatCard label="Tax on interest" value={formatGBP(taxBreakdown.savingsTax)} />
           )}
           {hasGains && (
             <>

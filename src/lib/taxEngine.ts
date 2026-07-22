@@ -46,17 +46,23 @@ export interface IncomeTaxBreakdown {
   personalAllowance: number;
   /** Basic-rate band width after extending it for grossed-up pension contributions and Gift Aid */
   extendedBasicRateBandWidth: number;
-  /** How much of the extended basic-rate band is left after non-dividend and dividend income - available to CGT at the lower rate */
+  /** How much of the extended basic-rate band is left after non-dividend, savings and dividend income - available to CGT at the lower rate */
   remainingBasicRateBandWidth: number;
+  /** Starting rate for savings band remaining after non-savings income (0 if non-savings income already uses it all up) */
+  startingRateForSavingsRemaining: number;
+  /** Personal Savings Allowance available, based on which band total income falls into */
+  personalSavingsAllowance: number;
   nonDividendTax: number;
+  savingsTax: number;
   dividendTax: number;
   totalTax: number;
 }
 
 /**
- * Computes total UK income tax for a tax year given non-dividend income
- * (salary + other taxable income, stacked first) and dividend income
- * (stacked last, after the personal allowance and other bands are used up).
+ * Computes total UK income tax for a tax year given non-dividend,
+ * non-savings income (salary + other taxable income, stacked first),
+ * untaxed savings interest (stacked next), and dividend income (stacked
+ * last, after the personal allowance and other bands are used up).
  *
  * Personal pension contributions (relief at source) and Gift Aid donations
  * both extend the basic-rate (and therefore higher-rate) band by their
@@ -67,10 +73,12 @@ export interface IncomeTaxBreakdown {
 export function calculateIncomeTax(
   rates: TaxYearRates,
   nonDividendIncome: number,
+  savingsIncome: number,
   dividendIncome: number,
   reliefs: IncomeReliefs = { pensionContribution: 0, giftAid: 0 },
 ): IncomeTaxBreakdown {
-  const totalIncome = Math.max(0, nonDividendIncome) + Math.max(0, dividendIncome);
+  const totalIncome =
+    Math.max(0, nonDividendIncome) + Math.max(0, savingsIncome) + Math.max(0, dividendIncome);
   const grossUpRate = rates.pensionGiftAidGrossUpRate;
   const grossPension = Math.max(0, reliefs.pensionContribution) / (1 - grossUpRate);
   const grossGiftAid = Math.max(0, reliefs.giftAid) / (1 - grossUpRate);
@@ -91,14 +99,57 @@ export function calculateIncomeTax(
   const taxableNonDividend = Math.max(0, nonDividendIncome - pa);
   const nonDividendResult = taxThroughBands(taxableNonDividend, bandsFor(rates.nonDividendRates));
 
-  // Dividends stack on top of non-dividend income, using whatever band capacity remains.
-  const remainingBands = bandsFor(rates.dividendRates).map((band, i) => ({
+  // Any personal allowance left unused by non-dividend income carries forward
+  // to reduce savings income first, then dividend income - PA isn't wasted
+  // just because non-dividend income alone doesn't use it all up.
+  const unusedPaAfterNonDividend = Math.max(0, pa - Math.max(0, nonDividendIncome));
+  const savings = Math.max(0, savingsIncome);
+  const taxableSavings = Math.max(0, savings - unusedPaAfterNonDividend);
+
+  // Savings interest stacks on top of non-savings income, using the same
+  // basic/higher/additional rates and whatever band capacity remains.
+  const bandsAfterNonDividend = bandsFor(rates.nonDividendRates).map((band, i) => ({
     ...band,
     width: Math.max(0, band.width - nonDividendResult.perBand[i]),
   }));
 
+  const { perBand: savingsPerBand } = taxThroughBands(taxableSavings, bandsAfterNonDividend);
+
+  // Starting rate for savings: up to £5,000 at 0%, reduced £1 for £1 by
+  // non-savings income already using up that space in the basic band.
+  const startingRateForSavingsRemaining = Math.max(0, rates.savingsStartingRateBandWidth - taxableNonDividend);
+
+  // Personal Savings Allowance depends on which band total income falls into.
+  const higherRateStart = pa + extendedBasicRateBandWidth;
+  const personalSavingsAllowance =
+    totalIncome <= higherRateStart
+      ? rates.savingsAllowance.basic
+      : totalIncome <= rates.additionalRateThreshold
+        ? rates.savingsAllowance.higher
+        : rates.savingsAllowance.additional;
+
+  // Both nil-rate amounts are applied from the lowest band first; they still
+  // "use up" band capacity but are taxed at 0% rather than the band's rate.
+  let savingsNilRateLeft = startingRateForSavingsRemaining + personalSavingsAllowance;
+  let savingsTax = 0;
+  savingsPerBand.forEach((amountInBand, i) => {
+    const nilRated = Math.min(savingsNilRateLeft, amountInBand);
+    savingsNilRateLeft -= nilRated;
+    const taxable = amountInBand - nilRated;
+    savingsTax += taxable * bandsAfterNonDividend[i].rate;
+  });
+
+  // Dividends stack last, using whatever band capacity remains after both
+  // non-dividend and savings income.
+  const remainingBands = bandsFor(rates.dividendRates).map((band, i) => ({
+    ...band,
+    width: Math.max(0, band.width - nonDividendResult.perBand[i] - savingsPerBand[i]),
+  }));
+
+  const unusedPaAfterSavings = Math.max(0, unusedPaAfterNonDividend - savings);
   const dividends = Math.max(0, dividendIncome);
-  const { perBand: divPerBand } = taxThroughBands(dividends, remainingBands);
+  const taxableDividends = Math.max(0, dividends - unusedPaAfterSavings);
+  const { perBand: divPerBand } = taxThroughBands(taxableDividends, remainingBands);
 
   // Apply the dividend nil-rate allowance to the lowest bands first; it still
   // "uses up" band capacity but is taxed at 0% rather than the band's rate.
@@ -113,7 +164,7 @@ export function calculateIncomeTax(
 
   const remainingBasicRateBandWidth = Math.max(
     0,
-    extendedBasicRateBandWidth - nonDividendResult.perBand[0] - divPerBand[0],
+    extendedBasicRateBandWidth - nonDividendResult.perBand[0] - savingsPerBand[0] - divPerBand[0],
   );
 
   return {
@@ -122,15 +173,18 @@ export function calculateIncomeTax(
     personalAllowance: pa,
     extendedBasicRateBandWidth,
     remainingBasicRateBandWidth,
+    startingRateForSavingsRemaining,
+    personalSavingsAllowance,
     nonDividendTax: nonDividendResult.tax,
+    savingsTax,
     dividendTax,
-    totalTax: nonDividendResult.tax + dividendTax,
+    totalTax: nonDividendResult.tax + savingsTax + dividendTax,
   };
 }
 
 /** Estimates PAYE tax that would be withheld on salary alone under a standard tax code. */
 export function estimatePayeTax(rates: TaxYearRates, salary: number): number {
-  return calculateIncomeTax(rates, salary, 0).nonDividendTax;
+  return calculateIncomeTax(rates, salary, 0, 0).nonDividendTax;
 }
 
 export interface CapitalGainsBreakdown {
@@ -165,6 +219,7 @@ export interface MonthlyTotals {
   dividendsEmployment: number;
   dividendsShareDealing: number;
   otherIncome: number;
+  savingsInterest: number;
   pensionContribution: number;
   giftAid: number;
   capitalGains: number;
@@ -187,6 +242,7 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       dividendsEmployment: acc.dividendsEmployment + m.dividendsEmployment,
       dividendsShareDealing: acc.dividendsShareDealing + m.dividendsShareDealing,
       otherIncome: acc.otherIncome + m.otherIncome,
+      savingsInterest: acc.savingsInterest + m.savingsInterest,
       pensionContribution: acc.pensionContribution + m.pensionContribution,
       giftAid: acc.giftAid + m.giftAid,
       capitalGains: acc.capitalGains + m.capitalGains,
@@ -199,6 +255,7 @@ export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex
       dividendsEmployment: 0,
       dividendsShareDealing: 0,
       otherIncome: 0,
+      savingsInterest: 0,
       pensionContribution: 0,
       giftAid: 0,
       capitalGains: 0,
@@ -224,7 +281,13 @@ function computeReliefsAndCalc(year: TaxYearData, totals: MonthlyTotals) {
     pensionContribution: totals.pensionContribution,
     giftAid: totals.giftAid,
   };
-  const taxBreakdown = calculateIncomeTax(year.rates, nonDividendIncome, totalDividends(totals), reliefs);
+  const taxBreakdown = calculateIncomeTax(
+    year.rates,
+    nonDividendIncome,
+    totals.savingsInterest,
+    totalDividends(totals),
+    reliefs,
+  );
   const capitalGains = calculateCapitalGainsTax(
     year.rates,
     totals.capitalGains,
@@ -431,6 +494,17 @@ export function calculateTimeline(state: PlannerState): TimelinePoint[] {
   let cumulativeSaved = 0;
 
   for (const yearId of sortedYearIds) {
+    // A reconciled starting point resets the running totals at the start of
+    // its year, so earlier history (real or not yet entered) is ignored from
+    // this point on - only the difference between liabilityBase and
+    // cumulativePaid matters for outstandingLiability, so resetting paid to
+    // 0 and the base to the known figure is enough to pick up cleanly.
+    if (state.openingBalance && state.openingBalance.yearId === yearId) {
+      liabilityBase = state.openingBalance.outstandingLiability;
+      cumulativePaid = 0;
+      cumulativeSaved = state.openingBalance.savedBalance;
+    }
+
     const year = state.years[yearId];
     const startYear = startYearFromYearId(yearId);
     const progress = calculateMonthlyProgress(year);

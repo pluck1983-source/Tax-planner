@@ -18,6 +18,7 @@ export function emptyMonths(): MonthlyEntry[] {
     dividendsEmployment: 0,
     dividendsShareDealing: 0,
     otherIncome: 0,
+    savingsInterest: 0,
     pensionContribution: 0,
     giftAid: 0,
     capitalGains: 0,
@@ -33,11 +34,13 @@ export function createYearData(rates: TaxYearRates, isIndicative = false): TaxYe
 
 const RATES_FALLBACK_DEFAULTS: Pick<
   TaxYearRates,
-  'pensionGiftAidGrossUpRate' | 'cgtAnnualExemptAmount' | 'cgtRates'
+  'pensionGiftAidGrossUpRate' | 'cgtAnnualExemptAmount' | 'cgtRates' | 'savingsStartingRateBandWidth' | 'savingsAllowance'
 > = {
   pensionGiftAidGrossUpRate: 0.2,
   cgtAnnualExemptAmount: 3000,
   cgtRates: { basic: 0.18, higher: 0.24 },
+  savingsStartingRateBandWidth: 5000,
+  savingsAllowance: { basic: 1000, higher: 500, additional: 0 },
 };
 
 const MONTH_FALLBACK_DEFAULTS: Pick<
@@ -48,6 +51,7 @@ const MONTH_FALLBACK_DEFAULTS: Pick<
   | 'hmrcPaymentMade'
   | 'dividendsEmployment'
   | 'dividendsShareDealing'
+  | 'savingsInterest'
 > = {
   pensionContribution: 0,
   giftAid: 0,
@@ -55,6 +59,7 @@ const MONTH_FALLBACK_DEFAULTS: Pick<
   hmrcPaymentMade: 0,
   dividendsEmployment: 0,
   dividendsShareDealing: 0,
+  savingsInterest: 0,
 };
 
 /**
@@ -87,7 +92,7 @@ function normalizeState(state: PlannerState): PlannerState {
       months: year.months.map((m) => migrateMonth(m)),
     };
   }
-  return { ...state, years };
+  return { ...state, years, openingBalance: state.openingBalance ?? null };
 }
 
 /** Which UK tax year (by start calendar year) a given date falls in. */
@@ -109,6 +114,7 @@ function initialState(): PlannerState {
     years,
     yearOrder: [priorRates.id, currentRates.id],
     selectedYearId: currentRates.id,
+    openingBalance: null,
   };
 }
 
@@ -152,6 +158,7 @@ export function addNewYear(state: PlannerState): PlannerState {
 
   const yearData = createYearData(rates);
   return {
+    ...state,
     years: { ...state.years, [id]: yearData },
     yearOrder: [...state.yearOrder, id],
     selectedYearId: id,
@@ -175,6 +182,7 @@ export function addPreviousYear(state: PlannerState): PlannerState {
   const rates = getDefaultRatesForYear(startYear);
   const yearData = createYearData(rates);
   return {
+    ...state,
     years: { ...state.years, [id]: yearData },
     yearOrder: [id, ...state.yearOrder],
     selectedYearId: id,
@@ -187,6 +195,7 @@ export interface IndicativeTotals {
   dividendsEmployment: number;
   dividendsShareDealing: number;
   otherIncome: number;
+  savingsInterest: number;
   pensionContribution: number;
   giftAid: number;
   capitalGains: number;
@@ -214,6 +223,7 @@ function buildIndicativeMonths(totals: IndicativeTotals): MonthlyEntry[] {
         dividendsEmployment: totals.dividendsEmployment,
         dividendsShareDealing: totals.dividendsShareDealing,
         otherIncome: totals.otherIncome,
+        savingsInterest: totals.savingsInterest,
         pensionContribution: totals.pensionContribution,
         giftAid: totals.giftAid,
         capitalGains: totals.capitalGains,
@@ -237,6 +247,7 @@ export function getIndicativeTotals(year: TaxYearData): IndicativeTotals {
     dividendsEmployment: bulk.dividendsEmployment,
     dividendsShareDealing: bulk.dividendsShareDealing,
     otherIncome: bulk.otherIncome,
+    savingsInterest: bulk.savingsInterest,
     pensionContribution: bulk.pensionContribution,
     giftAid: bulk.giftAid,
     capitalGains: bulk.capitalGains,
@@ -270,6 +281,7 @@ export function setIndicative(state: PlannerState, yearId: string, indicative: b
       dividendsEmployment: totals.dividendsEmployment,
       dividendsShareDealing: totals.dividendsShareDealing,
       otherIncome: totals.otherIncome,
+      savingsInterest: totals.savingsInterest,
       pensionContribution: totals.pensionContribution,
       giftAid: totals.giftAid,
       capitalGains: totals.capitalGains,
@@ -291,6 +303,7 @@ export function setIndicative(state: PlannerState, yearId: string, indicative: b
       dividendsEmployment: spread(totals.dividendsEmployment, m.monthIndex),
       dividendsShareDealing: spread(totals.dividendsShareDealing, m.monthIndex),
       otherIncome: spread(totals.otherIncome, m.monthIndex),
+      savingsInterest: spread(totals.savingsInterest, m.monthIndex),
       pensionContribution: spread(totals.pensionContribution, m.monthIndex),
       giftAid: spread(totals.giftAid, m.monthIndex),
       capitalGains: spread(totals.capitalGains, m.monthIndex),
@@ -316,7 +329,18 @@ export function deleteYear(state: PlannerState, yearId: string): PlannerState {
   delete years[yearId];
   const yearOrder = state.yearOrder.filter((id) => id !== yearId);
   const selectedYearId = state.selectedYearId === yearId ? (yearOrder[0] ?? null) : state.selectedYearId;
-  return { years, yearOrder, selectedYearId };
+  const openingBalance = state.openingBalance?.yearId === yearId ? null : state.openingBalance;
+  return { ...state, years, yearOrder, selectedYearId, openingBalance };
+}
+
+/**
+ * Sets (or clears, with `balance: null`) the reconciled starting point the
+ * Timeline resets its running totals to at the start of the given year -
+ * so exact historical figures for every earlier year don't need to be
+ * reconstructed, just a known-correct snapshot to carry forward from.
+ */
+export function setOpeningBalance(state: PlannerState, balance: PlannerState['openingBalance']): PlannerState {
+  return { ...state, openingBalance: balance };
 }
 
 export function exportStateAsJson(state: PlannerState): string {

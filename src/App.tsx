@@ -40,6 +40,7 @@ function App() {
     toggleIndicative,
     clearYear,
     deleteYear,
+    setOpening,
     replaceState,
   } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
@@ -233,7 +234,7 @@ function App() {
                 </div>
               )}
 
-              {tab === 'timeline' && <TimelineView state={state} />}
+              {tab === 'timeline' && <TimelineView state={state} onSetOpeningBalance={setOpening} />}
 
               {tab === 'payments' && <PaymentsLedger state={state} />}
 
