@@ -460,6 +460,7 @@ export function estimateFollowingYear(state: PlannerState): FollowingYearEstimat
     months: basisYear.months,
     isIndicative: false,
     poaOverride: null,
+    prediction: null,
   };
 
   const schedule = calculatePaymentsOnAccount(syntheticFollowingYear, basisYear);

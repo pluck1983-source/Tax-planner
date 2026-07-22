@@ -75,6 +75,14 @@ salary, dividends and other income.
   latest year, which may still be in progress and understate a full year),
   shown as clearly-marked "estimated" rows in the ledger and as a dashed
   continuation of the Timeline's outstanding liability line.
+- The **Forecast** tab is a what-if prediction for a year, entirely
+  separate from its real monthly entries - enter what you think your
+  full-year PAYE, dividends and other income will be, and it works out
+  predicted total tax, a monthly savings target (the predicted liability
+  spread evenly across the year), and the resulting payments on account
+  and balancing payment (using a real prior year or known payment on
+  account amount if one's on record, for an accurate split). Clearing the
+  forecast doesn't touch the year's real data.
 - Add new tax years as they roll around - forwards as they arrive, or
   backwards to seed an earlier year you haven't logged yet, so payments on
   account for your earliest tracked year can be calculated properly instead

@@ -114,6 +114,25 @@ export interface TaxYearData {
    * POA figures from HMRC's own statement are known.
    */
   poaOverride: PoaOverride | null;
+  /**
+   * A what-if forecast of this year's full-year totals, entirely separate
+   * from the real monthly entries - for working out roughly what to save
+   * each month and what the resulting payments on account would look like,
+   * before the year's actual figures are known.
+   */
+  prediction: YearPrediction | null;
+}
+
+export interface YearPrediction {
+  paye: number;
+  payeTaxDeducted: number | null;
+  dividendsEmployment: number;
+  dividendsShareDealing: number;
+  otherIncome: number;
+  savingsInterest: number;
+  pensionContribution: number;
+  giftAid: number;
+  capitalGains: number;
 }
 
 export interface PoaOverride {

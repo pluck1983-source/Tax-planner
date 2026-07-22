@@ -11,8 +11,9 @@ import { SavingsChart } from './components/SavingsChart';
 import { RatesEditor } from './components/RatesEditor';
 import { TimelineView } from './components/TimelineView';
 import { PaymentsLedger } from './components/PaymentsLedger';
+import { PredictionView } from './components/PredictionView';
 
-type Tab = 'monthly' | 'summary' | 'timeline' | 'payments' | 'rates';
+type Tab = 'monthly' | 'summary' | 'prediction' | 'timeline' | 'payments' | 'rates';
 
 function hasMultiMonthDetail(year: TaxYearData): boolean {
   const monthsWithData = year.months.filter(
@@ -43,6 +44,7 @@ function App() {
     setOpening,
     setPoaOverrideForYear,
     setFollowingYearEstimate,
+    setPrediction,
     replaceState,
   } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
@@ -188,6 +190,7 @@ function App() {
                   [
                     ['monthly', selectedYear.isIndicative ? 'Yearly totals' : 'Monthly entries'],
                     ['summary', 'Summary & payments'],
+                    ['prediction', 'Forecast'],
                     ['timeline', 'Timeline'],
                     ['payments', 'Payments'],
                     ['rates', 'Rates'],
@@ -238,6 +241,14 @@ function App() {
                     <SavingsChart year={selectedYear} />
                   )}
                 </div>
+              )}
+
+              {tab === 'prediction' && (
+                <PredictionView
+                  year={selectedYear}
+                  priorYear={priorYear}
+                  onSetPrediction={(prediction) => setPrediction(selectedYear.id, prediction)}
+                />
               )}
 
               {tab === 'timeline' && <TimelineView state={state} onSetOpeningBalance={setOpening} />}

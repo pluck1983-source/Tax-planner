@@ -1,4 +1,4 @@
-import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates } from './types';
+import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates, YearPrediction } from './types';
 import {
   DEFAULT_TAX_YEARS,
   getDefaultRatesForYear,
@@ -29,7 +29,51 @@ export function emptyMonths(): MonthlyEntry[] {
 }
 
 export function createYearData(rates: TaxYearRates, isIndicative = false): TaxYearData {
-  return { id: rates.id, rates, months: emptyMonths(), isIndicative, poaOverride: null };
+  return { id: rates.id, rates, months: emptyMonths(), isIndicative, poaOverride: null, prediction: null };
+}
+
+/** Splits a whole-year amount evenly across 12 months, putting the rounding remainder in the last month. */
+function spreadAcrossMonths(amount: number, monthIndex: number): number {
+  const base = Math.floor(amount / 12);
+  const remainder = amount - base * 12;
+  return monthIndex === 11 ? base + remainder : base;
+}
+
+/**
+ * Builds a synthetic year from a what-if prediction, spreading the totals
+ * evenly across all 12 months, so it can be fed straight into the existing
+ * tax/payments-on-account/monthly-progress calculations and produce a
+ * smooth month-by-month savings ramp - unlike indicative years (which put
+ * everything in one month, since they represent real past data), a forward
+ * prediction should ramp evenly since there's no real monthly pattern yet.
+ *
+ * Carries through the real year's known payment-on-account override, if
+ * set - this year's actual POA1/POA2 are already fixed by HMRC regardless
+ * of how the rest of the year's income turns out, so the prediction's
+ * balancing-payment estimate should use them rather than guessing.
+ */
+export function buildPredictionYear(prediction: YearPrediction, sourceYear: TaxYearData): TaxYearData {
+  const months = emptyMonths().map((m) => ({
+    ...m,
+    paye: spreadAcrossMonths(prediction.paye, m.monthIndex),
+    payeTaxDeducted:
+      prediction.payeTaxDeducted === null ? null : spreadAcrossMonths(prediction.payeTaxDeducted, m.monthIndex),
+    dividendsEmployment: spreadAcrossMonths(prediction.dividendsEmployment, m.monthIndex),
+    dividendsShareDealing: spreadAcrossMonths(prediction.dividendsShareDealing, m.monthIndex),
+    otherIncome: spreadAcrossMonths(prediction.otherIncome, m.monthIndex),
+    savingsInterest: spreadAcrossMonths(prediction.savingsInterest, m.monthIndex),
+    pensionContribution: spreadAcrossMonths(prediction.pensionContribution, m.monthIndex),
+    giftAid: spreadAcrossMonths(prediction.giftAid, m.monthIndex),
+    capitalGains: spreadAcrossMonths(prediction.capitalGains, m.monthIndex),
+  }));
+  return {
+    id: sourceYear.id,
+    rates: sourceYear.rates,
+    months,
+    isIndicative: false,
+    poaOverride: sourceYear.poaOverride,
+    prediction: null,
+  };
 }
 
 const RATES_FALLBACK_DEFAULTS: Pick<
@@ -91,6 +135,7 @@ function normalizeState(state: PlannerState): PlannerState {
       poaOverride: year.poaOverride
         ? { ...year.poaOverride, priorYearBalancingPayment: year.poaOverride.priorYearBalancingPayment ?? 0 }
         : null,
+      prediction: year.prediction ?? null,
       rates: { ...RATES_FALLBACK_DEFAULTS, ...year.rates },
       months: year.months.map((m) => migrateMonth(m)),
     };
@@ -300,12 +345,7 @@ export function setIndicative(state: PlannerState, yearId: string, indicative: b
     });
   } else {
     const totals = getIndicativeTotals(year);
-    const spread = (amount: number, index: number) => {
-      const base = Math.floor(amount / 12);
-      const remainder = amount - base * 12;
-      // Put the rounding remainder in the last month so the total is exact.
-      return index === 11 ? base + remainder : base;
-    };
+    const spread = spreadAcrossMonths;
     months = emptyMonths().map((m) => ({
       ...m,
       paye: spread(totals.paye, m.monthIndex),
@@ -372,6 +412,17 @@ export function setPoaOverride(
 /** Toggles whether the Payments ledger and Timeline show a projected estimate for the year following the latest one on record. */
 export function setShowFollowingYearEstimate(state: PlannerState, show: boolean): PlannerState {
   return { ...state, showFollowingYearEstimate: show };
+}
+
+/** Sets (or clears, with `prediction: null`) a year's what-if full-year forecast. */
+export function setYearPrediction(
+  state: PlannerState,
+  yearId: string,
+  prediction: TaxYearData['prediction'],
+): PlannerState {
+  const year = state.years[yearId];
+  if (!year) return state;
+  return { ...state, years: { ...state.years, [yearId]: { ...year, prediction } } };
 }
 
 export function exportStateAsJson(state: PlannerState): string {
