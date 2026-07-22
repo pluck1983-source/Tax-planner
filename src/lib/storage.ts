@@ -93,7 +93,12 @@ function normalizeState(state: PlannerState): PlannerState {
       months: year.months.map((m) => migrateMonth(m)),
     };
   }
-  return { ...state, years, openingBalance: state.openingBalance ?? null };
+  return {
+    ...state,
+    years,
+    openingBalance: state.openingBalance ?? null,
+    showFollowingYearEstimate: state.showFollowingYearEstimate ?? false,
+  };
 }
 
 /** Which UK tax year (by start calendar year) a given date falls in. */
@@ -116,6 +121,7 @@ function initialState(): PlannerState {
     yearOrder: [priorRates.id, currentRates.id],
     selectedYearId: currentRates.id,
     openingBalance: null,
+    showFollowingYearEstimate: false,
   };
 }
 
@@ -359,6 +365,11 @@ export function setPoaOverride(
   const year = state.years[yearId];
   if (!year) return state;
   return { ...state, years: { ...state.years, [yearId]: { ...year, poaOverride: override } } };
+}
+
+/** Toggles whether the Payments ledger and Timeline show a projected estimate for the year following the latest one on record. */
+export function setShowFollowingYearEstimate(state: PlannerState, show: boolean): PlannerState {
+  return { ...state, showFollowingYearEstimate: show };
 }
 
 export function exportStateAsJson(state: PlannerState): string {

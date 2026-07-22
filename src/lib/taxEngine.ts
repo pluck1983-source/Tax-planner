@@ -1,6 +1,6 @@
 import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates } from './types';
 import { MONTH_LABELS } from './types';
-import { startYearFromYearId, yearIdFromStartYear } from './defaultRates';
+import { getDefaultRatesForYear, startYearFromYearId, yearIdFromStartYear } from './defaultRates';
 
 export interface Band {
   width: number; // Infinity for the top band
@@ -391,6 +391,72 @@ export function calculatePaymentsOnAccount(
   };
 }
 
+export interface FollowingYearEstimate {
+  followingYearId: string;
+  followingYearLabel: string;
+  basisYearId: string;
+  basisYearLabel: string;
+  schedule: PaymentsOnAccountSchedule;
+}
+
+/**
+ * Projects payments on account for the tax year following the latest one on
+ * record, using the last fully-entered year as the basis rather than the
+ * latest year itself - which may still be in progress and understate what a
+ * full year's liability (and therefore the following year's POA) will
+ * actually be.
+ *
+ * Works by treating the basis year's own figures as a stand-in for the
+ * latest year's eventual full-year total, and running them through the
+ * normal payments-on-account calculation as if they were the following
+ * year's own income - so the projected POA1/POA2 come out as half of the
+ * basis year's real liability, exactly mirroring how HMRC would set them if
+ * the following year's income turns out unchanged from the basis year's.
+ *
+ * Returns null if there aren't at least two years on record to determine a
+ * "previous, not current" basis year, or if the following year already has
+ * real data on record.
+ */
+export function estimateFollowingYear(state: PlannerState): FollowingYearEstimate | null {
+  const sortedYearIds = [...state.yearOrder].sort(
+    (a, b) => startYearFromYearId(a) - startYearFromYearId(b),
+  );
+  if (sortedYearIds.length < 2) return null;
+
+  const latestYearId = sortedYearIds[sortedYearIds.length - 1];
+  const basisYearId = sortedYearIds[sortedYearIds.length - 2];
+  const basisYear = state.years[basisYearId];
+
+  const followingStartYear = startYearFromYearId(latestYearId) + 1;
+  const followingYearId = yearIdFromStartYear(followingStartYear);
+  if (state.years[followingYearId]) return null;
+
+  const latestRates = state.years[latestYearId]?.rates;
+  const baseRates = getDefaultRatesForYear(followingStartYear);
+  // Carry forward the latest known rates/thresholds (frozen until 2028) rather than guessing.
+  const rates: TaxYearRates = latestRates
+    ? { ...latestRates, id: baseRates.id, label: baseRates.label, startDate: baseRates.startDate, endDate: baseRates.endDate }
+    : baseRates;
+
+  const syntheticFollowingYear: TaxYearData = {
+    id: followingYearId,
+    rates,
+    months: basisYear.months,
+    isIndicative: false,
+    poaOverride: null,
+  };
+
+  const schedule = calculatePaymentsOnAccount(syntheticFollowingYear, basisYear);
+
+  return {
+    followingYearId,
+    followingYearLabel: rates.label,
+    basisYearId,
+    basisYearLabel: basisYear.rates.label,
+    schedule,
+  };
+}
+
 /**
  * The amount HMRC would actually expect on a given month, for showing as a
  * placeholder next to the "paid to HMRC" field. Only January (payment on
@@ -478,6 +544,8 @@ export interface TimelinePoint {
   bankBalance: number;
   /** This month's own HMRC payment, if any (for annotating the chart) */
   hmrcPaymentMade: number;
+  /** True for the projected points appended when the following-year estimate is switched on - not real data */
+  projected?: boolean;
 }
 
 function calendarYearFor(startYear: number, monthIndex: number): number {
@@ -544,6 +612,44 @@ export function calculateTimeline(state: PlannerState): TimelinePoint[] {
     liabilityBase += calculateYearLiability(year).totalSelfAssessmentLiability;
   }
 
+  if (state.showFollowingYearEstimate) {
+    const last = points.at(-1);
+    const estimate = estimateFollowingYear(state);
+    if (last && estimate?.schedule.poa1 && estimate.schedule.poa2) {
+      const { poa1, poa2 } = estimate.schedule;
+      const jan31CalendarYear = poa1.dueDate.split('-')[0];
+      const jul31CalendarYear = poa2.dueDate.split('-')[0];
+
+      const afterPoa1Liability = last.cumulativeLiability + poa1.amount;
+      points.push({
+        yearId: estimate.followingYearId,
+        monthIndex: 9,
+        label: `Jan ${jan31CalendarYear} (est.)`,
+        cumulativeLiability: afterPoa1Liability,
+        cumulativePaidToHmrc: last.cumulativePaidToHmrc,
+        outstandingLiability: afterPoa1Liability - last.cumulativePaidToHmrc,
+        cumulativeSaved: last.cumulativeSaved,
+        bankBalance: last.bankBalance,
+        hmrcPaymentMade: 0,
+        projected: true,
+      });
+
+      const afterPoa2Liability = afterPoa1Liability + poa2.amount;
+      points.push({
+        yearId: estimate.followingYearId,
+        monthIndex: 3,
+        label: `Jul ${jul31CalendarYear} (est.)`,
+        cumulativeLiability: afterPoa2Liability,
+        cumulativePaidToHmrc: last.cumulativePaidToHmrc,
+        outstandingLiability: afterPoa2Liability - last.cumulativePaidToHmrc,
+        cumulativeSaved: last.cumulativeSaved,
+        bankBalance: last.bankBalance,
+        hmrcPaymentMade: 0,
+        projected: true,
+      });
+    }
+  }
+
   return points;
 }
 
@@ -560,7 +666,9 @@ export interface LedgerGroup {
   /** null when the month that due date falls in isn't on record, so we can't know what was actually paid */
   actualPaid: number | null;
   variance: number | null;
-  status: 'paid' | 'partial' | 'upcoming' | 'overdue' | 'none';
+  status: 'paid' | 'partial' | 'upcoming' | 'overdue' | 'estimated' | 'none';
+  /** True for the projected following-year row appended when the estimate toggle is on - not a real obligation yet */
+  estimated?: boolean;
 }
 
 /** 31 Jan falls in the January of the tax year that started the previous calendar year; 31 Jul falls in the July of the tax year starting that same calendar year. */
@@ -622,6 +730,24 @@ export function calculatePaymentLedger(state: PlannerState): LedgerGroup[] {
       return { dueDate, items, totalExpected, actualPaid, variance, status };
     })
     .filter((g) => g.status !== 'none');
+
+  if (state.showFollowingYearEstimate) {
+    const estimate = estimateFollowingYear(state);
+    if (estimate?.schedule.poa1 && estimate.schedule.poa2) {
+      const label = `${estimate.followingYearLabel}, estimated from ${estimate.basisYearLabel}`;
+      const asEstimatedGroup = (item: PaymentEvent): LedgerGroup => ({
+        dueDate: item.dueDate,
+        items: [{ label: `${item.label} (${label})`, amount: item.amount, yearId: estimate.followingYearId }],
+        totalExpected: item.amount,
+        actualPaid: null,
+        variance: null,
+        status: 'estimated',
+        estimated: true,
+      });
+      groups.push(asEstimatedGroup(estimate.schedule.poa1), asEstimatedGroup(estimate.schedule.poa2));
+      groups.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    }
+  }
 
   return groups;
 }

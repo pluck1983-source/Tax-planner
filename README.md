@@ -58,7 +58,13 @@ salary, dividends and other income.
 - The **Payments** tab is a single chronological ledger of every payment on
   account and balancing payment across every tax year on record, grouped by
   due date, showing what's owed vs. what you've actually recorded as paid
-  and whether each is upcoming, overdue, paid or partially paid.
+  and whether each is upcoming, overdue, paid or partially paid. A toggle
+  there switches on a **projected estimate for the following tax year**
+  (the year after the latest one on record) - payment on account 1 and 2
+  are projected from the last fully-entered year's liability (not the
+  latest year, which may still be in progress and understate a full year),
+  shown as clearly-marked "estimated" rows in the ledger and as a dashed
+  continuation of the Timeline's outstanding liability line.
 - Add new tax years as they roll around - forwards as they arrive, or
   backwards to seed an earlier year you haven't logged yet, so payments on
   account for your earliest tracked year can be calculated properly instead

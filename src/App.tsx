@@ -42,6 +42,7 @@ function App() {
     deleteYear,
     setOpening,
     setPoaOverrideForYear,
+    setFollowingYearEstimate,
     replaceState,
   } = usePlannerState();
   const [tab, setTab] = useState<Tab>('monthly');
@@ -241,7 +242,9 @@ function App() {
 
               {tab === 'timeline' && <TimelineView state={state} onSetOpeningBalance={setOpening} />}
 
-              {tab === 'payments' && <PaymentsLedger state={state} />}
+              {tab === 'payments' && (
+                <PaymentsLedger state={state} onSetFollowingYearEstimate={setFollowingYearEstimate} />
+              )}
 
               {tab === 'rates' && (
                 <RatesEditor rates={selectedYear.rates} onChange={(patch) => updateRates(selectedYear.id, patch)} />

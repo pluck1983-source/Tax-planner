@@ -10,6 +10,7 @@ import {
   setIndicative,
   setOpeningBalance,
   setPoaOverride,
+  setShowFollowingYearEstimate,
 } from './storage';
 
 export function usePlannerState() {
@@ -68,6 +69,10 @@ export function usePlannerState() {
     setState((s) => setPoaOverride(s, yearId, override));
   }, []);
 
+  const setFollowingYearEstimate = useCallback((show: boolean) => {
+    setState((s) => setShowFollowingYearEstimate(s, show));
+  }, []);
+
   const replaceState = useCallback((next: PlannerState) => {
     setState(next);
   }, []);
@@ -84,6 +89,7 @@ export function usePlannerState() {
     deleteYear,
     setOpening,
     setPoaOverrideForYear,
+    setFollowingYearEstimate,
     replaceState,
   };
 }

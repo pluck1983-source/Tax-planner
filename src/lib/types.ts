@@ -144,4 +144,12 @@ export interface PlannerState {
    * or payments-on-account calculations.
    */
   openingBalance: OpeningBalance | null;
+  /**
+   * Toggled from the Payments tab. When true, the Payments ledger and
+   * Timeline both show a projected estimate for the tax year following the
+   * latest one on record, based on the last fully-entered year's liability
+   * (not the latest year, which may still be in progress and understate a
+   * full year).
+   */
+  showFollowingYearEstimate: boolean;
 }

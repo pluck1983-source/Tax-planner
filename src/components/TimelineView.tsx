@@ -134,13 +134,21 @@ function OpeningBalancePanel({ state, onSetOpeningBalance }: Props) {
 
 export function TimelineView({ state, onSetOpeningBalance }: Props) {
   const timeline = calculateTimeline(state);
-  const latest = timeline.at(-1);
+  const lastRealIndex = timeline.reduce((acc, p, i) => (p.projected ? acc : i), -1);
+  // The headline stats reflect real data only - the projected points (if any) extend the
+  // chart but shouldn't be silently folded into figures labelled "to date".
+  const latest = lastRealIndex >= 0 ? timeline[lastRealIndex] : undefined;
+  const latestProjected = timeline.at(-1);
   const openingLabel = state.openingBalance ? state.years[state.openingBalance.yearId]?.rates.label : null;
 
-  const data = timeline.map((p) => ({
+  const hasProjection = timeline.some((p) => p.projected);
+
+  const data = timeline.map((p, i) => ({
     label: p.label,
-    'Outstanding liability': Math.round(p.outstandingLiability),
-    'Bank balance': Math.round(p.bankBalance),
+    'Outstanding liability': p.projected ? null : Math.round(p.outstandingLiability),
+    'Bank balance': p.projected ? null : Math.round(p.bankBalance),
+    'Outstanding liability (estimated)':
+      lastRealIndex >= 0 && i >= lastRealIndex ? Math.round(p.outstandingLiability) : null,
   }));
 
   const paymentPoints = timeline.filter((p) => p.hmrcPaymentMade !== 0);
@@ -186,6 +194,13 @@ export function TimelineView({ state, onSetOpeningBalance }: Props) {
               value={formatGBP(Math.abs(latest.bankBalance - latest.outstandingLiability))}
               sub="Bank balance vs outstanding liability"
             />
+            {hasProjection && latestProjected && (
+              <StatCard
+                label={`Projected outstanding by ${latestProjected.label}`}
+                value={formatGBP(latestProjected.outstandingLiability)}
+                sub="Estimate only - see the Payments tab"
+              />
+            )}
           </div>
 
           <div>
@@ -206,6 +221,16 @@ export function TimelineView({ state, onSetOpeningBalance }: Props) {
                   <Legend />
                   <Line type="monotone" dataKey="Outstanding liability" stroke="#4f46e5" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="Bank balance" stroke="#16a34a" strokeWidth={2} dot={false} />
+                  {hasProjection && (
+                    <Line
+                      type="monotone"
+                      dataKey="Outstanding liability (estimated)"
+                      stroke="#4f46e5"
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={false}
+                    />
+                  )}
                   {paymentPoints.map((p) => (
                     <ReferenceDot
                       key={`${p.yearId}-${p.monthIndex}`}
@@ -221,6 +246,12 @@ export function TimelineView({ state, onSetOpeningBalance }: Props) {
             </div>
             <p className="text-xs text-slate-400 mt-2">
               Dots mark months with an actual HMRC payment or refund recorded.
+              {hasProjection && (
+                <>
+                  {' '}
+                  The dashed segment is a projection for the following tax year, switched on from the Payments tab.
+                </>
+              )}
             </p>
           </div>
         </>
