@@ -91,7 +91,7 @@ function LogForm({ childRecords, rates, onAdd }: { childRecords: Child[]; rates:
           <span className="px-2 py-1.5 text-xs text-slate-400">{scheduled ? `${scheduled.startTime} - ${scheduled.endTime}` : 'Not scheduled this day'}</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <TextField label="Actual arrival" type="time" value={actualArrival} onChange={setActualArrival} />
         <TextField label="Actual departure" type="time" value={actualDeparture} onChange={setActualDeparture} />
       </div>

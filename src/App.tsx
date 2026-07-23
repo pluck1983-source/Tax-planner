@@ -9,8 +9,10 @@ import { TermDatesManager } from './components/TermDatesManager';
 import { HolidaysManager } from './components/HolidaysManager';
 import { AttendanceRegister } from './components/AttendanceRegister';
 import { ForecastView } from './components/ForecastView';
+import { IncomeTracker } from './components/IncomeTracker';
+import { TaxLiabilityView } from './components/TaxLiabilityView';
 
-type Tab = 'forecast' | 'children' | 'terms' | 'holidays' | 'attendance' | 'authorities' | 'rates';
+type Tab = 'forecast' | 'children' | 'terms' | 'holidays' | 'attendance' | 'income' | 'tax' | 'authorities' | 'rates';
 
 const TABS: [Tab, string][] = [
   ['forecast', 'Forecast'],
@@ -18,6 +20,8 @@ const TABS: [Tab, string][] = [
   ['terms', 'Term dates'],
   ['holidays', 'Holidays'],
   ['attendance', 'Attendance'],
+  ['income', 'Income'],
+  ['tax', 'Tax'],
   ['authorities', 'Local authorities'],
   ['rates', 'My rates'],
 ];
@@ -40,6 +44,8 @@ function App() {
     addChild,
     updateChild,
     deleteChild,
+    addAttendancePatternChange,
+    deleteAttendancePatternChange,
     addHoliday,
     deleteHoliday,
     addTerm,
@@ -48,6 +54,14 @@ function App() {
     addAttendance,
     updateAttendance,
     deleteAttendance,
+    addFundingPaymentReceived,
+    deleteFundingPaymentReceived,
+    addParentPaymentReceived,
+    deleteParentPaymentReceived,
+    addTaxYear,
+    updateTaxYear,
+    deleteTaxYear,
+    selectTaxYear,
     replaceState,
   } = useChildminderState();
 
@@ -137,6 +151,8 @@ function App() {
             onAdd={addChild}
             onUpdate={updateChild}
             onDelete={deleteChild}
+            onAddPatternChange={addAttendancePatternChange}
+            onDeletePatternChange={deleteAttendancePatternChange}
           />
         )}
 
@@ -153,6 +169,20 @@ function App() {
             onUpdate={updateAttendance}
             onDelete={deleteAttendance}
           />
+        )}
+
+        {tab === 'income' && (
+          <IncomeTracker
+            state={state}
+            onAddFunding={addFundingPaymentReceived}
+            onDeleteFunding={deleteFundingPaymentReceived}
+            onAddParent={addParentPaymentReceived}
+            onDeleteParent={deleteParentPaymentReceived}
+          />
+        )}
+
+        {tab === 'tax' && (
+          <TaxLiabilityView state={state} onAddYear={addTaxYear} onUpdateYear={updateTaxYear} onDeleteYear={deleteTaxYear} onSelectYear={selectTaxYear} />
         )}
 
         {tab === 'authorities' && (

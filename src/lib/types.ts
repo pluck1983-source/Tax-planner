@@ -101,6 +101,25 @@ export interface EmergencyContact extends Contact {
   relationship: string;
 }
 
+/**
+ * Whether a child attends only during term time (no care needed in school
+ * holidays - e.g. they also attend a school-age setting) or full time,
+ * year-round including school holidays.
+ */
+export type AttendancePattern = 'termTimeOnly' | 'fullTime';
+
+/**
+ * A dated change to a child's attendance pattern - parents switch between
+ * term-time-only and full-time fairly often (e.g. once a child starts
+ * school), so this is a history rather than a single flag: the entry with
+ * the latest effectiveFrom on or before a given date applies.
+ */
+export interface AttendancePatternChange {
+  id: string;
+  pattern: AttendancePattern;
+  effectiveFrom: string;
+}
+
 export interface Child {
   id: string;
   firstName: string;
@@ -116,6 +135,7 @@ export interface Child {
   endDate: string | null;
   active: boolean;
   weeklySchedule: ScheduleDay[];
+  attendancePatternHistory: AttendancePatternChange[];
   notes: string;
 }
 
@@ -127,6 +147,13 @@ export interface Holiday {
   startDate: string;
   endDate: string;
   label: string;
+  /**
+   * The date notice of this holiday was actually given, as evidence in case
+   * of a later dispute over how much notice was provided - distinct from
+   * the holiday's own start date, and can be recorded however far ahead of
+   * or behind it the real notice was.
+   */
+  noticeGivenDate: string | null;
 }
 
 export interface Term {
@@ -153,6 +180,58 @@ export interface AttendanceRecord {
   notes: string;
 }
 
+/** A funding payment actually received from a local authority - the confirmed counterpart to the forecast's projected funding payments. */
+export interface FundingPaymentRecord {
+  id: string;
+  localAuthorityId: string;
+  termId: string | null;
+  amount: number;
+  /** Date the payment actually arrived */
+  date: string;
+  notes: string;
+}
+
+/** A payment actually received from a parent - the confirmed counterpart to the forecast's projected parental income. */
+export interface ParentPaymentRecord {
+  id: string;
+  childId: string;
+  amount: number;
+  /** Date the payment actually arrived */
+  date: string;
+  method: string;
+  notes: string;
+}
+
+/**
+ * Self-employment tax settings for one UK tax year (6 April - 5 April),
+ * covering Income Tax and Class 4 National Insurance on childminding
+ * trading profit. Editable per year since rates/thresholds change.
+ */
+export interface TaxYearSettings {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  personalAllowance: number;
+  /** Width of the basic-rate band above the personal allowance */
+  basicRateBandWidth: number;
+  /** Total income above which the additional rate applies */
+  additionalRateThreshold: number;
+  basicRate: number;
+  higherRate: number;
+  additionalRate: number;
+  /** Tax-free trading allowance - used instead of actual expenses when expenses are lower */
+  tradingAllowance: number;
+  class4LowerLimit: number;
+  class4UpperLimit: number;
+  class4LowerRate: number;
+  class4UpperRate: number;
+  /** Allowable expenses recorded so far this tax year */
+  expensesToDate: number;
+  /** Estimated allowable expenses for the whole tax year, for the forecast liability */
+  projectedFullYearExpenses: number;
+}
+
 export interface ChildminderState {
   ageBands: AgeBand[];
   localAuthorities: LocalAuthority[];
@@ -161,4 +240,8 @@ export interface ChildminderState {
   holidays: Holiday[];
   terms: Term[];
   attendance: AttendanceRecord[];
+  fundingPaymentsReceived: FundingPaymentRecord[];
+  parentPaymentsReceived: ParentPaymentRecord[];
+  taxYears: TaxYearSettings[];
+  selectedTaxYearId: string | null;
 }

@@ -1,3 +1,4 @@
+import { defaultTaxYearSettings, taxYearStartForDate } from './taxEngine';
 import type { AgeBand, ChildminderState } from './types';
 
 export const DEFAULT_AGE_BANDS: AgeBand[] = [
@@ -7,6 +8,7 @@ export const DEFAULT_AGE_BANDS: AgeBand[] = [
 ];
 
 export function initialChildminderState(): ChildminderState {
+  const currentTaxYear = defaultTaxYearSettings(taxYearStartForDate(new Date()));
   return {
     ageBands: DEFAULT_AGE_BANDS,
     localAuthorities: [],
@@ -15,5 +17,9 @@ export function initialChildminderState(): ChildminderState {
     holidays: [],
     terms: [],
     attendance: [],
+    fundingPaymentsReceived: [],
+    parentPaymentsReceived: [],
+    taxYears: [currentTaxYear],
+    selectedTaxYearId: currentTaxYear.id,
   };
 }

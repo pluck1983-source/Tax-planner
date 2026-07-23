@@ -1,9 +1,21 @@
 import { useState } from 'react';
-import { weeklyScheduledHours } from '../lib/forecastEngine';
+import { v4 as uuid } from 'uuid';
+import { attendancePatternForDate, weeklyScheduledHours } from '../lib/forecastEngine';
 import { currentAgeBand } from '../lib/fundingEngine';
-import { formatHours } from '../lib/format';
+import { formatDate, formatHours } from '../lib/format';
 import { parseISODate } from '../lib/dateUtils';
-import type { AgeBand, Child, ChildFundingType, Contact, DayOfWeek, EmergencyContact, LocalAuthority, ScheduleDay } from '../lib/types';
+import type {
+  AgeBand,
+  AttendancePattern,
+  AttendancePatternChange,
+  Child,
+  ChildFundingType,
+  Contact,
+  DayOfWeek,
+  EmergencyContact,
+  LocalAuthority,
+  ScheduleDay,
+} from '../lib/types';
 import { Card, SelectField, SmallButton, TextField } from './ui';
 
 interface Props {
@@ -13,6 +25,8 @@ interface Props {
   onAdd: (child: Omit<Child, 'id'>) => void;
   onUpdate: (id: string, patch: Partial<Child>) => void;
   onDelete: (id: string) => void;
+  onAddPatternChange: (childId: string, change: Omit<AttendancePatternChange, 'id'>) => void;
+  onDeletePatternChange: (childId: string, id: string) => void;
 }
 
 const DAYS: { value: DayOfWeek; label: string }[] = [
@@ -47,15 +61,21 @@ function emptyChild(): Omit<Child, 'id'> {
     endDate: null,
     active: true,
     weeklySchedule: [],
+    attendancePatternHistory: [],
     notes: '',
   };
 }
+
+const PATTERN_LABELS: Record<AttendancePattern, string> = {
+  fullTime: 'Full time (year-round, including school holidays)',
+  termTimeOnly: 'Term time only (no care needed in school holidays)',
+};
 
 function ContactFields({ label, contact, onChange }: { label: string; contact: Contact; onChange: (c: Contact) => void }) {
   return (
     <div>
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{label}</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <TextField label="Name" value={contact.name} onChange={(v) => onChange({ ...contact, name: v })} />
         <TextField label="Phone" type="tel" value={contact.phone} onChange={(v) => onChange({ ...contact, phone: v })} />
         <TextField label="Email" type="email" value={contact.email} onChange={(v) => onChange({ ...contact, email: v })} />
@@ -115,7 +135,69 @@ function WeeklyScheduleEditor({ schedule, onChange }: { schedule: ScheduleDay[];
   );
 }
 
-export function ChildrenManager({ childRecords, localAuthorities, ageBands, onAdd, onUpdate, onDelete }: Props) {
+function AttendancePatternEditor({
+  history,
+  onAdd,
+  onDelete,
+}: {
+  history: AttendancePatternChange[];
+  onAdd: (change: Omit<AttendancePatternChange, 'id'>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [pattern, setPattern] = useState<AttendancePattern>('fullTime');
+  const [effectiveFrom, setEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const current = attendancePatternForDate({ attendancePatternHistory: history } as Child, new Date());
+  const sorted = [...history].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Attendance pattern</p>
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+          Currently: {PATTERN_LABELS[current]}
+        </span>
+      </div>
+      <p className="text-xs text-slate-400 mb-2 max-w-2xl">
+        Term-time-only children aren't billed at all in weeks outside term time (not even at the holiday retainer
+        rate, since there's no ongoing contract for those weeks). Parents can switch between the two at any time -
+        record the date the change takes effect rather than overwriting history.
+      </p>
+      {sorted.length > 0 && (
+        <ul className="text-xs space-y-1 mb-2">
+          {sorted.map((p) => (
+            <li key={p.id} className="flex items-center gap-2">
+              <span>{PATTERN_LABELS[p.pattern]}</span>
+              <span className="text-slate-400">from {formatDate(p.effectiveFrom)}</span>
+              <button type="button" onClick={() => onDelete(p.id)} className="text-rose-500 hover:underline ml-auto">
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onAdd({ pattern, effectiveFrom });
+        }}
+      >
+        <SelectField
+          label="Change to"
+          value={pattern}
+          onChange={setPattern}
+          options={(Object.keys(PATTERN_LABELS) as AttendancePattern[]).map((p) => ({ value: p, label: PATTERN_LABELS[p] }))}
+        />
+        <TextField label="Effective from" type="date" value={effectiveFrom} onChange={setEffectiveFrom} />
+        <SmallButton type="submit" variant="primary">
+          Save change
+        </SmallButton>
+      </form>
+    </div>
+  );
+}
+
+export function ChildrenManager({ childRecords, localAuthorities, ageBands, onAdd, onUpdate, onDelete, onAddPatternChange, onDeletePatternChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(childRecords[0]?.id ?? null);
   const [adding, setAdding] = useState(childRecords.length === 0);
   const [draft, setDraft] = useState(emptyChild());
@@ -126,7 +208,10 @@ export function ChildrenManager({ childRecords, localAuthorities, ageBands, onAd
   function submitDraft(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.firstName.trim() || !draft.dateOfBirth) return;
-    onAdd(draft);
+    onAdd({
+      ...draft,
+      attendancePatternHistory: [{ id: uuid(), pattern: 'fullTime', effectiveFrom: draft.startDate }],
+    });
     setDraft(emptyChild());
     setAdding(false);
   }
@@ -167,16 +252,16 @@ export function ChildrenManager({ childRecords, localAuthorities, ageBands, onAd
           <Card>
             <h3 className="text-sm font-semibold mb-3">New child</h3>
             <form className="space-y-4" onSubmit={submitDraft}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <TextField label="First name" value={draft.firstName} onChange={(v) => setDraft({ ...draft, firstName: v })} />
                 <TextField label="Last name" value={draft.lastName} onChange={(v) => setDraft({ ...draft, lastName: v })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <TextField label="Date of birth" type="date" value={draft.dateOfBirth} onChange={(v) => setDraft({ ...draft, dateOfBirth: v })} />
                 <TextField label="Contract start date" type="date" value={draft.startDate} onChange={(v) => setDraft({ ...draft, startDate: v })} />
               </div>
               <ContactFields label="Primary parent/carer" contact={draft.primaryParent} onChange={(c) => setDraft({ ...draft, primaryParent: c })} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <SelectField
                   label="Local authority"
                   value={draft.localAuthorityId ?? 'none'}
@@ -207,6 +292,8 @@ export function ChildrenManager({ childRecords, localAuthorities, ageBands, onAd
             localAuthorities={localAuthorities}
             ageBands={ageBands}
             onUpdate={(patch) => onUpdate(selected.id, patch)}
+            onAddPatternChange={(change) => onAddPatternChange(selected.id, change)}
+            onDeletePatternChange={(id) => onDeletePatternChange(selected.id, id)}
             onDelete={() => {
               if (window.confirm(`Remove ${selected.firstName} ${selected.lastName}? This also removes their holidays and attendance records.`)) {
                 onDelete(selected.id);
@@ -245,12 +332,16 @@ function ChildDetail({
   localAuthorities,
   ageBands,
   onUpdate,
+  onAddPatternChange,
+  onDeletePatternChange,
   onDelete,
 }: {
   child: Child;
   localAuthorities: LocalAuthority[];
   ageBands: AgeBand[];
   onUpdate: (patch: Partial<Child>) => void;
+  onAddPatternChange: (change: Omit<AttendancePatternChange, 'id'>) => void;
+  onDeletePatternChange: (id: string) => void;
   onDelete: () => void;
 }) {
   const hours = weeklyScheduledHours(child);
@@ -285,22 +376,22 @@ function ChildDetail({
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <TextField label="First name" value={child.firstName} onChange={(v) => onUpdate({ firstName: v })} />
         <TextField label="Last name" value={child.lastName} onChange={(v) => onUpdate({ lastName: v })} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <TextField label="Date of birth" type="date" value={child.dateOfBirth} onChange={(v) => onUpdate({ dateOfBirth: v })} />
         <div className="text-sm flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400">Current age band</span>
           <span className="px-2 py-1.5">{band?.label ?? 'Under funding age'}</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <TextField label="Contract start date" type="date" value={child.startDate} onChange={(v) => onUpdate({ startDate: v })} />
         <TextField label="Contract end date" type="date" value={child.endDate ?? ''} onChange={(v) => onUpdate({ endDate: v || null })} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SelectField
           label="Local authority"
           value={child.localAuthorityId ?? 'none'}
@@ -326,7 +417,7 @@ function ChildDetail({
           )}
         </div>
         {child.secondaryParent && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <TextField label="Name" value={child.secondaryParent.name} onChange={(v) => onUpdate({ secondaryParent: { ...child.secondaryParent!, name: v } })} />
             <TextField label="Phone" type="tel" value={child.secondaryParent.phone} onChange={(v) => onUpdate({ secondaryParent: { ...child.secondaryParent!, phone: v } })} />
             <TextField label="Email" type="email" value={child.secondaryParent.email} onChange={(v) => onUpdate({ secondaryParent: { ...child.secondaryParent!, email: v } })} />
@@ -352,7 +443,7 @@ function ChildDetail({
           )}
         </div>
         {child.emergencyContact && (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <TextField
               label="Name"
               value={child.emergencyContact.name}
@@ -385,6 +476,8 @@ function ChildDetail({
         </p>
         <WeeklyScheduleEditor schedule={child.weeklySchedule} onChange={(s) => onUpdate({ weeklySchedule: s })} />
       </div>
+
+      <AttendancePatternEditor history={child.attendancePatternHistory} onAdd={onAddPatternChange} onDelete={onDeletePatternChange} />
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-slate-500 dark:text-slate-400">Notes</span>

@@ -195,7 +195,7 @@ export function LocalAuthorityManager({ localAuthorities, ageBands, onAdd, onUpd
                 instalments. Check which applies with this council so the forecast shows realistic payment dates,
                 not just when the hours are delivered.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <SelectField
                   label="Payment schedule"
                   value={selected.fundingPaymentSchedule}

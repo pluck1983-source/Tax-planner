@@ -3,14 +3,18 @@ import { v4 as uuid } from 'uuid';
 import { loadState, saveState } from './storage';
 import type {
   AgeBand,
+  AttendancePatternChange,
   AttendanceRecord,
   Child,
   ChildminderState,
+  FundingPaymentRecord,
   FundingRate,
   Holiday,
   LatePickupRate,
   LocalAuthority,
   NonFundedRate,
+  ParentPaymentRecord,
+  TaxYearSettings,
   Term,
 } from './types';
 
@@ -123,6 +127,23 @@ export function useChildminderState() {
     }));
   }, []);
 
+  const addAttendancePatternChange = useCallback((childId: string, change: Omit<AttendancePatternChange, 'id'>) => {
+    setState((s) => ({
+      ...s,
+      children: s.children.map((c) =>
+        c.id === childId ? { ...c, attendancePatternHistory: [...c.attendancePatternHistory, { ...change, id: uuid() }] } : c,
+      ),
+    }));
+  }, []);
+  const deleteAttendancePatternChange = useCallback((childId: string, id: string) => {
+    setState((s) => ({
+      ...s,
+      children: s.children.map((c) =>
+        c.id === childId ? { ...c, attendancePatternHistory: c.attendancePatternHistory.filter((p) => p.id !== id) } : c,
+      ),
+    }));
+  }, []);
+
   // Holidays
   const addHoliday = useCallback((holiday: Omit<Holiday, 'id'>) => {
     setState((s) => ({ ...s, holidays: [...s.holidays, { ...holiday, id: uuid() }] }));
@@ -156,6 +177,51 @@ export function useChildminderState() {
     setState((s) => ({ ...s, attendance: s.attendance.filter((a) => a.id !== id) }));
   }, []);
 
+  // Income received
+  const addFundingPaymentReceived = useCallback((record: Omit<FundingPaymentRecord, 'id'>) => {
+    setState((s) => ({ ...s, fundingPaymentsReceived: [...s.fundingPaymentsReceived, { ...record, id: uuid() }] }));
+  }, []);
+  const updateFundingPaymentReceived = useCallback((id: string, patch: Partial<FundingPaymentRecord>) => {
+    setState((s) => ({
+      ...s,
+      fundingPaymentsReceived: s.fundingPaymentsReceived.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }));
+  }, []);
+  const deleteFundingPaymentReceived = useCallback((id: string) => {
+    setState((s) => ({ ...s, fundingPaymentsReceived: s.fundingPaymentsReceived.filter((r) => r.id !== id) }));
+  }, []);
+
+  const addParentPaymentReceived = useCallback((record: Omit<ParentPaymentRecord, 'id'>) => {
+    setState((s) => ({ ...s, parentPaymentsReceived: [...s.parentPaymentsReceived, { ...record, id: uuid() }] }));
+  }, []);
+  const updateParentPaymentReceived = useCallback((id: string, patch: Partial<ParentPaymentRecord>) => {
+    setState((s) => ({
+      ...s,
+      parentPaymentsReceived: s.parentPaymentsReceived.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }));
+  }, []);
+  const deleteParentPaymentReceived = useCallback((id: string) => {
+    setState((s) => ({ ...s, parentPaymentsReceived: s.parentPaymentsReceived.filter((r) => r.id !== id) }));
+  }, []);
+
+  // Tax years
+  const addTaxYear = useCallback((year: TaxYearSettings) => {
+    setState((s) => ({ ...s, taxYears: [...s.taxYears, year], selectedTaxYearId: year.id }));
+  }, []);
+  const updateTaxYear = useCallback((id: string, patch: Partial<TaxYearSettings>) => {
+    setState((s) => ({ ...s, taxYears: s.taxYears.map((y) => (y.id === id ? { ...y, ...patch } : y)) }));
+  }, []);
+  const deleteTaxYear = useCallback((id: string) => {
+    setState((s) => {
+      const taxYears = s.taxYears.filter((y) => y.id !== id);
+      const selectedTaxYearId = s.selectedTaxYearId === id ? (taxYears[0]?.id ?? null) : s.selectedTaxYearId;
+      return { ...s, taxYears, selectedTaxYearId };
+    });
+  }, []);
+  const selectTaxYear = useCallback((id: string) => {
+    setState((s) => ({ ...s, selectedTaxYearId: id }));
+  }, []);
+
   const replaceState = useCallback((next: ChildminderState) => setState(next), []);
 
   return {
@@ -178,6 +244,8 @@ export function useChildminderState() {
     addChild,
     updateChild,
     deleteChild,
+    addAttendancePatternChange,
+    deleteAttendancePatternChange,
     addHoliday,
     updateHoliday,
     deleteHoliday,
@@ -187,6 +255,16 @@ export function useChildminderState() {
     addAttendance,
     updateAttendance,
     deleteAttendance,
+    addFundingPaymentReceived,
+    updateFundingPaymentReceived,
+    deleteFundingPaymentReceived,
+    addParentPaymentReceived,
+    updateParentPaymentReceived,
+    deleteParentPaymentReceived,
+    addTaxYear,
+    updateTaxYear,
+    deleteTaxYear,
+    selectTaxYear,
     replaceState,
   };
 }

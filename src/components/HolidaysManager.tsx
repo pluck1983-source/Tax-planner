@@ -21,6 +21,7 @@ function AddHolidayForm({ childRecords, onAdd }: { childRecords: Child[]; onAdd:
   const [label, setLabel] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [noticeGivenDate, setNoticeGivenDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   return (
     <form
@@ -34,13 +35,15 @@ function AddHolidayForm({ childRecords, onAdd }: { childRecords: Child[]; onAdd:
           startDate,
           endDate,
           label: label.trim() || (ownerType === 'childminder' ? 'Childminder closed' : 'Holiday'),
+          noticeGivenDate: noticeGivenDate || null,
         });
         setLabel('');
         setStartDate('');
         setEndDate('');
+        setNoticeGivenDate(new Date().toISOString().slice(0, 10));
       }}
     >
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 items-end">
         <SelectField
           label="Whose holiday"
           value={ownerType}
@@ -56,11 +59,35 @@ function AddHolidayForm({ childRecords, onAdd }: { childRecords: Child[]; onAdd:
         <TextField label="Label" value={label} onChange={setLabel} placeholder="e.g. Summer holiday" />
         <TextField label="Start date" type="date" value={startDate} onChange={setStartDate} />
         <TextField label="End date" type="date" value={endDate} onChange={setEndDate} />
+        <TextField label="Notice given on" type="date" value={noticeGivenDate} onChange={setNoticeGivenDate} />
       </div>
+      <p className="text-xs text-slate-400">
+        "Notice given on" records when notice of this holiday was actually given (however far ahead of or behind the
+        holiday itself), so there's evidence of how much notice was provided if it's ever disputed later.
+      </p>
       <SmallButton type="submit" variant="primary">
         Add holiday
       </SmallButton>
     </form>
+  );
+}
+
+function HolidayRow({ h, title, onDelete }: { h: Holiday; title: string; onDelete: () => void }) {
+  return (
+    <li className="py-2 text-sm">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span>
+          <span className="font-medium">{title}</span>{' '}
+          <span className="text-xs text-slate-400">
+            {formatDate(h.startDate)} - {formatDate(h.endDate)}
+          </span>
+        </span>
+        <button type="button" onClick={onDelete} className="text-xs text-rose-500 hover:underline shrink-0">
+          Remove
+        </button>
+      </div>
+      <p className="text-xs text-slate-400 mt-0.5">{h.noticeGivenDate ? `Notice given ${formatDate(h.noticeGivenDate)}` : 'No notice date recorded'}</p>
+    </li>
   );
 }
 
@@ -73,24 +100,14 @@ export function HolidaysManager({ holidays, childRecords, onAdd, onDelete }: Pro
       <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
         During any holiday - the childminder's own, or a specific child's - non-funded hours are billed at half rate
         as a retainer, and no funded hours are claimed for that week since the child isn't attending. Weeks outside
-        a holiday are billed as normal.
+        a holiday are billed as normal. Holidays can be logged as far in advance as notice is given, by either side.
       </p>
 
       <Card>
         <h3 className="text-sm font-semibold mb-3">Childminder holidays</h3>
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {childminderHolidays.map((h) => (
-            <li key={h.id} className="py-2 flex items-center justify-between gap-2 text-sm">
-              <span>
-                <span className="font-medium">{h.label}</span>{' '}
-                <span className="text-xs text-slate-400">
-                  {formatDate(h.startDate)} - {formatDate(h.endDate)}
-                </span>
-              </span>
-              <button type="button" onClick={() => onDelete(h.id)} className="text-xs text-rose-500 hover:underline shrink-0">
-                Remove
-              </button>
-            </li>
+            <HolidayRow key={h.id} h={h} title={h.label} onDelete={() => onDelete(h.id)} />
           ))}
           {childminderHolidays.length === 0 && <p className="text-xs text-slate-400 py-2">None added yet.</p>}
         </ul>
@@ -100,18 +117,12 @@ export function HolidaysManager({ holidays, childRecords, onAdd, onDelete }: Pro
         <h3 className="text-sm font-semibold mb-3">Client (child) holidays</h3>
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {clientHolidays.map((h) => (
-            <li key={h.id} className="py-2 flex items-center justify-between gap-2 text-sm">
-              <span>
-                <span className="font-medium">{h.owner.type === 'client' ? childName(childRecords, h.owner.childId) : ''}</span>{' '}
-                <span className="text-slate-500 dark:text-slate-400">{h.label}</span>{' '}
-                <span className="text-xs text-slate-400">
-                  {formatDate(h.startDate)} - {formatDate(h.endDate)}
-                </span>
-              </span>
-              <button type="button" onClick={() => onDelete(h.id)} className="text-xs text-rose-500 hover:underline shrink-0">
-                Remove
-              </button>
-            </li>
+            <HolidayRow
+              key={h.id}
+              h={h}
+              title={`${h.owner.type === 'client' ? childName(childRecords, h.owner.childId) : ''} - ${h.label}`}
+              onDelete={() => onDelete(h.id)}
+            />
           ))}
           {clientHolidays.length === 0 && <p className="text-xs text-slate-400 py-2">None added yet.</p>}
         </ul>

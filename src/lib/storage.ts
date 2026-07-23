@@ -1,4 +1,5 @@
 import { initialChildminderState } from './defaultData';
+import { defaultTaxYearSettings, taxYearStartForDate } from './taxEngine';
 import type { ChildminderState } from './types';
 
 const STORAGE_KEY = 'childminder-tracker-state-v1';
@@ -6,6 +7,7 @@ const STORAGE_KEY = 'childminder-tracker-state-v1';
 const EMPTY_CONTACT = { name: '', phone: '', email: '' };
 
 function normalizeState(state: ChildminderState): ChildminderState {
+  const taxYears = state.taxYears?.length ? state.taxYears : [defaultTaxYearSettings(taxYearStartForDate(new Date()))];
   return {
     ageBands: state.ageBands ?? initialChildminderState().ageBands,
     localAuthorities: (state.localAuthorities ?? []).map((l) => ({
@@ -23,10 +25,15 @@ function normalizeState(state: ChildminderState): ChildminderState {
       primaryParent: c.primaryParent ?? { ...EMPTY_CONTACT },
       secondaryParent: c.secondaryParent ?? null,
       emergencyContact: c.emergencyContact ?? null,
+      attendancePatternHistory: c.attendancePatternHistory ?? [{ id: `${c.id}-default-pattern`, pattern: 'fullTime', effectiveFrom: c.startDate }],
     })),
-    holidays: state.holidays ?? [],
+    holidays: (state.holidays ?? []).map((h) => ({ ...h, noticeGivenDate: h.noticeGivenDate ?? null })),
     terms: state.terms ?? [],
     attendance: state.attendance ?? [],
+    fundingPaymentsReceived: state.fundingPaymentsReceived ?? [],
+    parentPaymentsReceived: state.parentPaymentsReceived ?? [],
+    taxYears,
+    selectedTaxYearId: state.selectedTaxYearId && taxYears.some((y) => y.id === state.selectedTaxYearId) ? state.selectedTaxYearId : taxYears[0].id,
   };
 }
 

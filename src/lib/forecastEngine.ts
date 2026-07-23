@@ -5,13 +5,26 @@ import {
   fundingRateFor,
   nonFundedRateFor,
 } from './fundingEngine';
-import type { AgeBand, Child, ChildminderState, Term } from './types';
+import type { AgeBand, AttendancePattern, Child, ChildminderState, Term } from './types';
 
 export function weeklyScheduledHours(child: Child): number {
   return child.weeklySchedule.reduce((sum, day) => {
     const minutes = timeToMinutes(day.endTime) - timeToMinutes(day.startTime);
     return sum + Math.max(0, minutes) / 60;
   }, 0);
+}
+
+/**
+ * A child's attendance pattern as of a given date - the entry with the
+ * latest effectiveFrom on or before that date applies, so a parent
+ * switching between term-time-only and full-time takes effect from
+ * whatever date they choose rather than retroactively. Defaults to
+ * full-time if no history is recorded (matches pre-existing behaviour).
+ */
+export function attendancePatternForDate(child: Child, date: Date): AttendancePattern {
+  const applicable = child.attendancePatternHistory.filter((p) => parseISODate(p.effectiveFrom) <= date);
+  if (applicable.length === 0) return 'fullTime';
+  return applicable.reduce((latest, p) => (parseISODate(p.effectiveFrom) > parseISODate(latest.effectiveFrom) ? p : latest)).pattern;
 }
 
 export function isChildActiveInWeek(child: Child, weekStart: Date, weekEnd: Date): boolean {
@@ -50,6 +63,9 @@ export interface WeekChildBreakdown {
   term: Term | null;
   onHoliday: boolean;
   holidaySource: 'childminder' | 'client' | null;
+  /** True when a term-time-only child's schedule doesn't apply this week because it's outside term time */
+  notAttendingThisWeek: boolean;
+  attendancePattern: AttendancePattern;
   ageBand: AgeBand | null;
   fundedHours: number;
   fundedRate: number;
@@ -75,13 +91,15 @@ const HOLIDAY_DISCOUNT = 0.5;
  */
 export function computeWeekForChild(state: ChildminderState, child: Child, weekStart: Date): WeekChildBreakdown {
   const weekEnd = addDays(weekStart, 6);
-  const scheduledHours = weeklyScheduledHours(child);
   const term = termForDate(state.terms, weekStart);
   const isTermWeek = term !== null;
+  const attendancePattern = attendancePatternForDate(child, weekStart);
+  const notAttendingThisWeek = attendancePattern === 'termTimeOnly' && !isTermWeek;
+  const scheduledHours = notAttendingThisWeek ? 0 : weeklyScheduledHours(child);
   const onChildminderHoliday = childminderOnHoliday(state, weekStart, weekEnd);
   const onClientHoliday = childOnHoliday(state, child.id, weekStart, weekEnd);
-  const onHoliday = onChildminderHoliday || onClientHoliday;
-  const holidaySource: 'childminder' | 'client' | null = onChildminderHoliday ? 'childminder' : onClientHoliday ? 'client' : null;
+  const onHoliday = !notAttendingThisWeek && (onChildminderHoliday || onClientHoliday);
+  const holidaySource: 'childminder' | 'client' | null = onHoliday ? (onChildminderHoliday ? 'childminder' : 'client') : null;
 
   const ageBand = term ? eligibleAgeBandForTerm(parseISODate(child.dateOfBirth), term, state.ageBands) : null;
 
@@ -118,6 +136,8 @@ export function computeWeekForChild(state: ChildminderState, child: Child, weekS
     term,
     onHoliday,
     holidaySource,
+    notAttendingThisWeek,
+    attendancePattern,
     ageBand,
     fundedHours,
     fundedRate,
@@ -243,4 +263,21 @@ export function computeFundingPaymentsForTerm(state: ChildminderState, term: Ter
 
 export function computeFundingPayments(state: ChildminderState): FundingPaymentEvent[] {
   return state.terms.flatMap((term) => computeFundingPaymentsForTerm(state, term)).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+}
+
+/**
+ * Projected income for the remaining weeks of a tax year, from today to
+ * the year's end date - used to turn "confirmed income to date" into a
+ * full-year forecast for the Tax tab. Weeks are billed in full even where
+ * today falls mid-week, and any week starting after the tax year's end
+ * date is excluded, both acceptable approximations given the app's
+ * week-level granularity.
+ */
+export function computeRemainingYearForecastTotal(state: ChildminderState, taxYearEndDate: string): number {
+  const today = new Date();
+  const endDate = parseISODate(taxYearEndDate);
+  if (startOfWeek(today) > endDate) return 0;
+  const weekCount = Math.ceil((endDate.getTime() - startOfWeek(today).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  const weeks = computeForecast(state, today, weekCount).filter((w) => w.weekStart <= endDate);
+  return weeks.reduce((sum, w) => sum + w.total, 0);
 }
