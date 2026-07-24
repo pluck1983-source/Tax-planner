@@ -1,104 +1,126 @@
-# Childminder Income Tracker
+# Director Tax Planner
 
-A browser-based income tracker and forecaster for UK childminders - set up
-your local authorities' funding rates and your own private rates, add the
-children you look after, and see a realistic weekly/termly income forecast
-that accounts for term-time-only funding, holidays, and mid-term funding
-rate changes.
+A browser-based planner for UK company directors to work out how much to set
+aside each month for their self-assessment tax bill, based on monthly PAYE
+salary, dividends and other income.
 
 ## What it does
 
-- **Local authorities & funding rates** - add each local authority you deal
-  with and record their hourly funding rate per age band (9 months-2
-  years, 2 years, 3 & 4 years - editable) and funding type (15 hours
-  universal / 30 hours extended for working parents). Rates carry an
-  effective-from date, so you can add a future increase ahead of time and
-  the forecast switches to it automatically once that date arrives, while
-  everything before it still uses the old rate.
-- **Funding payment schedule** - records how each local authority actually
-  pays you: one lump sum per term (in arrears, after headcount) or spread
-  across monthly instalments, whichever you've agreed. The Forecast tab
-  shows a separate ledger of when that money is expected to land, distinct
-  from the weekly accrual figures.
-- **Your own rates** - set your private (non-funded) hourly rate, with an
-  optional age-specific override (e.g. a higher baby rate), plus a late
-  pickup charge (flat fee, per hour, or per 15 minutes, with a grace
-  period).
-- **Children** - name, date of birth, contract dates, assigned local
-  authority and funding type, and a full parent/carer contact card
-  (primary parent, optional secondary parent, and an emergency contact)
-  for quick access to names and numbers. Each child has a proposed weekly
-  schedule with individual start/finish times per day, not just a total
-  hours figure. An attendance pattern toggle (term time only / full time)
-  controls whether a child is billed at all outside term time - it's a
-  dated history rather than a single flag, so a parent switching between
-  the two takes effect from whatever date they choose, without losing the
-  record of when they were on which pattern.
-- **Term dates** - record each term's start/end date and academic year.
-  Funded hours only apply during a term; everything outside one is treated
-  as non-term time.
-- **Funding eligibility on a child's birthday** - a child doesn't become
-  eligible for a new funded age band the moment they have a birthday.
-  Funding follows the standard national rule: eligibility starts from the
-  next funding "count date" (1 January, 1 April or 1 September) on or
-  after the qualifying birthday, matched to the following term. The
-  forecast applies this automatically per child, per term.
-- **Holidays** - log the childminder's own holidays (fully closed) and
-  individual children's holidays separately, as far in advance as notice
-  is actually given by either side. During any holiday, non-funded hours
-  are billed at half rate as a retainer, and no funded hours are claimed
-  for that week since the child isn't attending. Each holiday records the
-  date notice was actually given, as evidence of how much notice was
-  provided if it's ever disputed later.
-- **Forecast** - a week-by-week income forecast over a chosen horizon
-  (4-52 weeks), showing scheduled hours, funded hours/income, non-funded
-  ("parental") hours/income, and holiday/term status per week, with a
-  stacked chart. Toggle between a combined total and a per-child
-  breakdown, with a running total per child and a drill-down weekly table
-  for any one child.
-- **Attendance register** - log actual arrival/departure against each
-  child's scheduled hours, purely for your own records and safeguarding -
-  it never affects billing, since fees are charged in advance from the
-  proposed weekly schedule. Late arrivals and no-shows are highlighted
-  with a safeguarding flag (auto-suggested, editable) and a dedicated notes
-  field, plus a "Safeguarding flags" view listing every flagged record so
-  nothing gets missed, in line with Ofsted's expectation that childminders
-  actively follow up on both. A suggested late-pickup charge is shown for
-  reference (not added to the forecast automatically).
-- **Income tracking** - log actual funding payments and parent payments as
-  they're received (exact date, amount, and for funding payments which
-  local authority/term), separate from the Forecast tab's projections.
-  Summary totals show what's actually come in this tax year, split by
-  funding vs. parental income.
-- **Tax liability** - estimates Income Tax and Class 4 National Insurance
-  on childminding profit for a UK tax year, editable per year as
-  rates/thresholds change. Shows two figures side by side: a **confirmed**
-  liability based only on income actually logged in the Income tab so far,
-  and a **forecast** liability for the full year, combining that confirmed
-  income with the Forecast tab's projection for the rest of the year -
-  plus a suggested monthly amount to set aside. Allowable expenses can be
-  entered separately for "to date" and "estimated for the full year"; the
-  £1,000 tax-free trading allowance is used automatically instead
-  whenever it's larger than the expenses entered.
+- Log salary (PAYE), dividends (tracked separately as company dividends vs.
+  share-dealing dividends, for reference - both are taxed identically),
+  other taxable income, untaxed UK bank/building society interest, personal
+  pension contributions and capital gains month by month for each UK tax
+  year (6 April - 5 April).
+- Calculates income tax and dividend tax using the current rest-of-UK
+  (England/Wales/NI) rates and bands, including the personal allowance
+  taper and dividend allowance. Any personal allowance left unused by
+  salary/other income carries forward to shelter savings interest, then
+  dividends, rather than being wasted - the common director setup of a low
+  salary plus dividends is taxed correctly rather than as if the full
+  personal allowance had already been used elsewhere.
+- Untaxed interest gets the starting rate for savings (up to £5,000 at 0%,
+  reduced £1-for-£1 by non-savings income) and the Personal Savings
+  Allowance (£1,000/£500/£0 depending on which tax band your total income
+  falls into) applied automatically, stacking after salary/other income but
+  before dividends.
+- Personal (relief-at-source) pension contributions extend your
+  basic/higher-rate bands and reduce adjusted net income for the personal
+  allowance taper, giving higher/additional-rate relief on top of the
+  basic-rate relief added automatically by the pension provider.
+- Calculates Capital Gains Tax separately, using whatever's left of your
+  basic-rate band after income and dividends, and the annual exempt amount.
+- Works out the self-assessment liability owed on top of tax already
+  collected through PAYE.
+- Estimates the (likely) **payments on account** and **balancing payment**
+  for each year, with due dates, based on the prior year's liability. CGT is
+  excluded from payments on account (per HMRC rules) and added in full to
+  the balancing payment. If the prior year isn't on record (or its figures
+  here don't match reality), you can enter the actual POA1/POA2 amounts
+  HMRC has already set for a year directly - this overrides the
+  calculation from the prior year everywhere it's used (the Summary,
+  Payments ledger, and "paid to HMRC" placeholders). If an even earlier
+  year isn't tracked at all but its balancing payment is also due the same
+  31 January as this year's payment on account 1 (HMRC always combines
+  them into one figure), you can enter that too, so a real payment covering
+  both isn't wrongly flagged as overpaying this year's payment on account.
+- Shows a running month-on-month figure for what you should have saved by
+  each point in the year to cover that year's tax bill, and compares it
+  against what you've actually logged as saved. "Saved this month" and
+  "Paid to HMRC" both accept negative amounts - e.g. money withdrawn back
+  out of savings without being paid to HMRC, or a refund received.
+- Record what you actually pay HMRC each January (payment on account 1 +
+  prior year's balancing payment) and July (prior year's payment on account
+  2) - placeholders show the expected amount, and each box is labelled with
+  the specific month and calendar year it falls in. The **Timeline** tab
+  then tracks total tax liability, total paid, outstanding liability, total
+  saved and bank balance continuously across every tax year on record, not
+  just the currently selected one.
+- The Timeline's **starting point** panel lets you set a known bank balance
+  and outstanding tax liability as of the start of a chosen year, so you can
+  reconcile going forward from today without having to reconstruct exact
+  figures for every earlier year - the running totals reset to those
+  figures at that year boundary and ignore history before it. Clear it any
+  time to go back to full-history calculation.
+- The Timeline shows a **saving date** - the effective date its figures are
+  accurate as of, treated as the end of the last month with data actually
+  entered (e.g. 31 August), not the 1st of the following month, since
+  salary/dividends are typically confirmed at month-end. When a starting
+  point is set, the "since" figures also show the exact date they're
+  calculated from (the chosen year's start date).
+- The **Payments** tab is a single chronological ledger of every payment on
+  account and balancing payment across every tax year on record, grouped by
+  due date, showing what's owed vs. what you've actually recorded as paid
+  and whether each is upcoming, overdue, paid or partially paid. A toggle
+  there switches on a **projected estimate for the following tax year**
+  (the year after the latest one on record) - payment on account 1 and 2
+  are projected from the last fully-entered year's liability (not the
+  latest year, which may still be in progress and understate a full year),
+  shown as clearly-marked "estimated" rows in the ledger and as a dashed
+  continuation of the Timeline's outstanding liability line.
+- The **Forecast** tab is a what-if prediction for a year, entirely
+  separate from its real monthly entries - enter what you think your
+  full-year PAYE, dividends and other income will be, and it works out
+  predicted total tax, a monthly savings target (the predicted liability
+  spread evenly across the year), and the resulting payments on account
+  and balancing payment (using a real prior year or known payment on
+  account amount if one's on record, for an accurate split). Clearing the
+  forecast doesn't touch the year's real data.
+- Add new tax years as they roll around - forwards as they arrive, or
+  backwards to seed an earlier year you haven't logged yet, so payments on
+  account for your earliest tracked year can be calculated properly instead
+  of assuming none are required. Every previous year stays on record, and
+  tax rates/bands are editable per year so you can update them once
+  HMRC/the Budget confirms figures for a new year.
+- Any year can be switched to **indicative** entry - yearly totals instead
+  of 12 months of detail - handy for an earlier year you just want to seed
+  without the busywork. Switch back to monthly entry any time (totals
+  spread evenly across the months as a starting point). Indicative years
+  are marked with a badge and show a simplified totals form in place of the
+  monthly table.
+- Each year can be cleared (reset its data, keep the year) or deleted
+  entirely (remove it from the planner) from its own header, both behind a
+  confirmation prompt so it isn't done by accident.
 - All data is stored locally in your browser (localStorage). Use
   Export/Import to back up or move your data between browsers/devices.
-- Runs as an installable web app (add to home screen) and as a native iOS
-  app via the Capacitor wrapper described below - the same codebase and
-  data model power both.
 
-Figures are estimates for planning purposes only, not financial or tax
-advice. Always confirm exact funding rates, eligibility start terms and
-payment schedules with your local authority - rules and figures vary by
-council and change over time. Tax figures assume childminding is your
-only income, use rest-of-UK (England/Wales/NI) rates, and don't apply the
-personal allowance taper above £100,000 of profit.
+Figures are estimates for planning purposes only, not tax advice - they
+don't account for Scottish income tax rates, marriage allowance, the High
+Income Child Benefit Charge, student loan repayments, or other reliefs.
+Capital Gains Tax on residential property usually has its own 60-day
+reporting/payment deadline, separate from self-assessment - this planner
+shows it together with the balancing payment for simplicity.
 
 ### iOS/mobile notes
 
+- The header, year selector, tab bar and action buttons all fit or scroll
+  cleanly on a phone-width screen rather than clipping or wrapping.
 - Form fields use 16px text so iOS Safari doesn't auto-zoom the page when
   one is focused.
 - Installed to the home screen, it respects the notch/Dynamic Island and
   home indicator safe areas and runs without Safari's browser chrome.
+- The Monthly entries table still scrolls horizontally on a phone - it's
+  a genuinely wide dataset (12 fields per month), and a card-per-month
+  layout would be the next step if that's worth the redesign.
 
 ## Development
 
@@ -133,9 +155,9 @@ Swift Package Manager, not CocoaPods, so there's no `pod install` step.
    npx cap open ios
    ```
    (or open `ios/App/App.xcodeproj` directly in Xcode)
-4. In Xcode, select the **App** target -> **Signing & Capabilities** tab,
+4. In Xcode, select the **App** target → **Signing & Capabilities** tab,
    and choose your Apple ID under **Team** (add your Apple ID in
-   Xcode -> Settings -> Accounts first if you haven't already). Xcode will
+   Xcode → Settings → Accounts first if you haven't already). Xcode will
    generate a free personal provisioning profile automatically.
 5. Pick a simulator or your plugged-in iPhone from the device dropdown at
    the top, then press the Run button (▶) to build and launch it.
@@ -144,19 +166,19 @@ Swift Package Manager, not CocoaPods, so there's no `pod install` step.
 - An [Apple Developer Program](https://developer.apple.com/programs/)
   membership ($99/year) - free personal accounts can run the app on your
   own device but can't submit to the App Store.
-- In Xcode: **Product -> Archive**, then use the Organizer window that
-  opens to **Distribute App -> App Store Connect**.
+- In Xcode: **Product → Archive**, then use the Organizer window that
+  opens to **Distribute App → App Store Connect**.
 - An App Store Connect listing (app name, screenshots, description,
   privacy policy - straightforward here since there's no backend, no
   accounts, and no tracking; all data stays on-device) created at
   [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
 
-The bundle identifier is `com.pluck1983.childminderincometracker` and the
-display name is "Childminder Tracker" (both set in `capacitor.config.ts`
-and the Xcode project) - change either before submitting if you'd prefer
-something else; the bundle ID especially can't be changed later once
-published. The app icon is generated from the existing brand mark
-(`scripts/icon-source.svg`) - replace
+The bundle identifier is `com.pluck1983.taxplanner` and the display name
+is "Tax Planner" (both set in `capacitor.config.ts` and the Xcode
+project) - change either before submitting if you'd prefer something
+else; the bundle ID especially can't be changed later once published.
+The app icon is generated from the existing brand mark
+(`public/favicon.svg`) - replace
 `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`
-(a single 1024×1024 PNG, no transparency) with something custom if you'd
-like a different one.
+(a single 1024×1024 PNG, no transparency) with something custom if
+you'd like a different one.
