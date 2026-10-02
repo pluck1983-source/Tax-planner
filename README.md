@@ -143,12 +143,11 @@ still no server of our own: the browser talks straight to Google.
 4. **Clients > Create client**: type **Web application**. Add
    `https://pluck1983-source.github.io` under *Authorized JavaScript
    origins* and `https://pluck1983-source.github.io/Tax-planner/` under
-   *Authorized redirect URIs* (add `http://localhost:5173` and
-   `http://localhost:5173/` too for local development).
-5. Copy the **Client ID**. In GitHub, **Settings > Secrets and variables >
-   Actions > Variables**, add a repository variable `GOOGLE_CLIENT_ID` with
-   it, then re-run the deploy. For local development, put
-   `VITE_GOOGLE_CLIENT_ID=<id>` in a `.env.local` file.
+   *Authorized redirect URIs*.
+5. Copy the **Client ID** into `VITE_GOOGLE_CLIENT_ID` in the committed
+   `.env` file (it identifies the app and isn't a secret). Builds without
+   it simply have no sync button. To test locally, also add
+   `http://localhost:5173` as an authorized origin and redirect URI.
 
 ### iOS/mobile notes
 
