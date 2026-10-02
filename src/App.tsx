@@ -12,6 +12,8 @@ import { RatesEditor } from './components/RatesEditor';
 import { TimelineView } from './components/TimelineView';
 import { PaymentsLedger } from './components/PaymentsLedger';
 import { PredictionView } from './components/PredictionView';
+import { CloudSyncControl } from './components/CloudSyncControl';
+import { useCloudSync } from './lib/sync/useCloudSync';
 
 type Tab = 'monthly' | 'summary' | 'prediction' | 'timeline' | 'payments' | 'rates';
 
@@ -46,6 +48,7 @@ function App() {
     setPrediction,
     replaceState,
   } = usePlannerState();
+  const cloudSync = useCloudSync(state, replaceState);
   const [tab, setTab] = useState<Tab>('monthly');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +121,16 @@ function App() {
               Monthly PAYE, dividends &amp; other income - your self-assessment savings target
             </p>
           </div>
-          <div className="flex gap-2 no-print shrink-0">
+          <div className="flex gap-2 no-print shrink-0 flex-wrap items-center">
+            <CloudSyncControl
+              status={cloudSync.status}
+              lastSyncedAt={cloudSync.lastSyncedAt}
+              error={cloudSync.error}
+              providerLabel={cloudSync.providerLabel}
+              onConnect={() => void cloudSync.connect()}
+              onDisconnect={cloudSync.disconnect}
+              onSyncNow={() => void cloudSync.syncNow()}
+            />
             <button
               type="button"
               onClick={handleExport}
@@ -269,7 +281,7 @@ function App() {
         Wales, Northern Ireland) income tax, dividend tax and Capital Gains Tax rules, including relief-at-source
         pension contributions. They don't account for Scottish income tax rates, marriage allowance, the High
         Income Child Benefit Charge, student loan repayments, or other reliefs. All data is stored locally in
-        your browser.
+        your browser{cloudSync.status !== 'unconfigured' && ', and optionally synced to your own ' + cloudSync.providerLabel}.
       </footer>
     </div>
   );

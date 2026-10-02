@@ -101,7 +101,51 @@ salary, dividends and other income.
   entirely (remove it from the planner) from its own header, both behind a
   confirmation prompt so it isn't done by accident.
 - All data is stored locally in your browser (localStorage). Use
-  Export/Import to back up or move your data between browsers/devices.
+  Export/Import to back up or move your data between browsers/devices, or
+  switch on **OneDrive sync** (below) to keep every device in step
+  automatically.
+
+### OneDrive sync
+
+**Sync with OneDrive** in the header signs in with your Microsoft account
+and keeps a copy of your data in `OneDrive > Apps > <app name> >
+tax-planner-data.json`. The app is only granted access to that one folder
+(`Files.ReadWrite.AppFolder`), not the rest of your OneDrive. There's still
+no server of our own: the browser talks straight to Microsoft.
+
+- Edits upload a couple of seconds after you stop typing. Opening or
+  switching back to the app pulls in changes made on another device.
+- The first time a second device connects, or if two devices both changed
+  things before syncing, you're asked which copy to keep. The copy that
+  loses is saved in this browser under the `tax-planner-sync-backup`
+  localStorage key, so a wrong choice can be recovered.
+- Every device still keeps its own local copy, so the app works offline
+  and syncs when it's back online.
+- When Microsoft's sign-in lapses (roughly daily on iPhone, where Safari
+  blocks the silent refresh), the button turns into **Reconnect OneDrive**.
+  Edits made in the meantime stay on the device and upload after you
+  reconnect.
+- Sync only appears in builds with a Microsoft client ID set, and not in
+  the native iOS (Capacitor) shell, whose `capacitor://` address Microsoft
+  won't accept as a sign-in redirect.
+
+**One-time setup** (free):
+
+1. Go to [entra.microsoft.com](https://entra.microsoft.com) > **App
+   registrations** > **New registration**, signing in with any Microsoft
+   account.
+2. Name it (e.g. "Tax Planner" - this becomes the `Apps/` folder name).
+   Under **Supported account types** choose *Accounts in any organizational
+   directory and personal Microsoft accounts*.
+3. Under **Redirect URI**, pick platform **Single-page application (SPA)**
+   and enter `https://pluck1983-source.github.io/Tax-planner/` (and add
+   `http://localhost:5173/` as a second SPA redirect URI for local
+   development).
+4. Register, then copy the **Application (client) ID**.
+5. In GitHub, **Settings > Secrets and variables > Actions > Variables**,
+   add a repository variable `ONEDRIVE_CLIENT_ID` with that ID, then
+   re-run the deploy. For local development, put
+   `VITE_ONEDRIVE_CLIENT_ID=<id>` in a `.env.local` file.
 
 Figures are estimates for planning purposes only, not tax advice - they
 don't account for Scottish income tax rates, marriage allowance, the High
