@@ -3,7 +3,7 @@ import type { PlannerState } from '../types';
 import { exportStateAsJson, importStateFromJson } from '../storage';
 import { AuthRequiredError, type CloudProvider, type RemoteFileMeta } from './types';
 import { decideSync, hashState, mergeIncoming } from './syncEngine';
-import { oneDriveProvider } from './oneDrive';
+import { googleDriveProvider } from './googleDrive';
 
 export type SyncStatus =
   | 'unconfigured' // built without a client ID - sync UI hidden
@@ -25,7 +25,7 @@ const META_KEY = 'tax-planner-sync-v1';
 const BACKUP_KEY = 'tax-planner-sync-backup';
 const PUSH_DEBOUNCE_MS = 2000;
 
-const provider: CloudProvider = oneDriveProvider;
+const provider: CloudProvider = googleDriveProvider;
 
 function readMeta(): SyncMeta | null {
   try {
@@ -165,7 +165,7 @@ export function useCloudSync(state: PlannerState, replaceState: (next: PlannerSt
   const connect = useCallback(async () => {
     setStatus('syncing');
     // Record the intent before signing in: the sign-in may leave the page for
-    // Microsoft's and come back, and the reload needs to know to finish syncing.
+    // the provider's and come back, and the reload needs to know to finish syncing.
     // An existing record is kept so reconnecting after a lapsed sign-in
     // doesn't re-ask the first-time question.
     if (!readMeta()) {

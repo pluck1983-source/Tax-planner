@@ -102,16 +102,16 @@ salary, dividends and other income.
   confirmation prompt so it isn't done by accident.
 - All data is stored locally in your browser (localStorage). Use
   Export/Import to back up or move your data between browsers/devices, or
-  switch on **OneDrive sync** (below) to keep every device in step
+  switch on **Google Drive sync** (below) to keep every device in step
   automatically.
 
-### OneDrive sync
+### Google Drive sync
 
-**Sync with OneDrive** in the header signs in with your Microsoft account
-and keeps a copy of your data in `OneDrive > Apps > <app name> >
-tax-planner-data.json`. The app is only granted access to that one folder
-(`Files.ReadWrite.AppFolder`), not the rest of your OneDrive. There's still
-no server of our own: the browser talks straight to Microsoft.
+**Sync with Google Drive** in the header signs in with your Google account
+and keeps a copy of your data as `tax-planner-data.json` in the Drive
+*app data* folder - a hidden folder only this app can see. The app is only
+granted that folder (`drive.appdata`), not the rest of your Drive. There's
+still no server of our own: the browser talks straight to Google.
 
 - Edits upload a couple of seconds after you stop typing. Opening or
   switching back to the app pulls in changes made on another device.
@@ -121,38 +121,34 @@ no server of our own: the browser talks straight to Microsoft.
   localStorage key, so a wrong choice can be recovered.
 - Every device still keeps its own local copy, so the app works offline
   and syncs when it's back online.
-- When Microsoft's sign-in lapses (roughly daily on iPhone, where Safari
-  blocks the silent refresh), the button turns into **Reconnect OneDrive**.
-  Edits made in the meantime stay on the device and upload after you
-  reconnect.
-- Sync only appears in builds with a Microsoft client ID set, and not in
-  the native iOS (Capacitor) shell, whose `capacitor://` address Microsoft
-  won't accept as a sign-in redirect.
+- Google's sign-in tokens last an hour. When one runs out, the app
+  briefly bounces to Google and straight back to get a new one (once per
+  session). If Google wants you to act - e.g. you've signed out of Google -
+  the button turns into **Reconnect Google Drive** instead. Edits made in
+  the meantime stay on the device and upload after you reconnect.
+- Sync only appears in builds with a Google client ID set, and not in the
+  native iOS (Capacitor) shell, whose `capacitor://` address Google won't
+  accept as a sign-in redirect.
 
-**One-time setup** (free):
+**One-time setup** (free, no card needed):
 
-1. Go to [entra.microsoft.com](https://entra.microsoft.com) > **App
-   registrations** > **New registration**, signing in with any Microsoft
-   account.
-2. Name it (e.g. "Tax Planner" - this becomes the `Apps/` folder name).
-   Under **Supported account types** choose *Accounts in any organizational
-   directory and personal Microsoft accounts*.
-3. Under **Redirect URI**, pick platform **Single-page application (SPA)**
-   and enter `https://pluck1983-source.github.io/Tax-planner/` (and add
-   `http://localhost:5173/` as a second SPA redirect URI for local
-   development).
-4. Register, then copy the **Application (client) ID**.
-5. In GitHub, **Settings > Secrets and variables > Actions > Variables**,
-   add a repository variable `ONEDRIVE_CLIENT_ID` with that ID, then
-   re-run the deploy. For local development, put
-   `VITE_ONEDRIVE_CLIENT_ID=<id>` in a `.env.local` file.
-
-Figures are estimates for planning purposes only, not tax advice - they
-don't account for Scottish income tax rates, marriage allowance, the High
-Income Child Benefit Charge, student loan repayments, or other reliefs.
-Capital Gains Tax on residential property usually has its own 60-day
-reporting/payment deadline, separate from self-assessment - this planner
-shows it together with the balancing payment for simplicity.
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
+   create a new project (e.g. "Tax Planner").
+2. **APIs & Services > Library**: search for **Google Drive API** and
+   enable it.
+3. **Google Auth Platform** (OAuth consent screen): get started, give it
+   an app name and your email, choose **External**. Under **Audience**,
+   add your own Google address as a test user (or publish the app - the
+   `drive.appdata` scope doesn't need Google's review).
+4. **Clients > Create client**: type **Web application**. Add
+   `https://pluck1983-source.github.io` under *Authorized JavaScript
+   origins* and `https://pluck1983-source.github.io/Tax-planner/` under
+   *Authorized redirect URIs* (add `http://localhost:5173` and
+   `http://localhost:5173/` too for local development).
+5. Copy the **Client ID**. In GitHub, **Settings > Secrets and variables >
+   Actions > Variables**, add a repository variable `GOOGLE_CLIENT_ID` with
+   it, then re-run the deploy. For local development, put
+   `VITE_GOOGLE_CLIENT_ID=<id>` in a `.env.local` file.
 
 ### iOS/mobile notes
 

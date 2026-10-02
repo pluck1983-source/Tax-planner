@@ -14,7 +14,7 @@ export interface RemoteFileMeta {
 
 export interface CloudProvider {
   id: string;
-  /** Shown in the UI, e.g. "OneDrive" */
+  /** Shown in the UI, e.g. "Google Drive" */
   label: string;
   /** False when the app was built without this provider's client ID */
   isConfigured(): boolean;
