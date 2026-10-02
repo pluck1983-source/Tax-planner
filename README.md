@@ -101,14 +101,53 @@ salary, dividends and other income.
   entirely (remove it from the planner) from its own header, both behind a
   confirmation prompt so it isn't done by accident.
 - All data is stored locally in your browser (localStorage). Use
-  Export/Import to back up or move your data between browsers/devices.
+  Export/Import to back up or move your data between browsers/devices, or
+  switch on **Google Drive sync** (below) to keep every device in step
+  automatically.
 
-Figures are estimates for planning purposes only, not tax advice - they
-don't account for Scottish income tax rates, marriage allowance, the High
-Income Child Benefit Charge, student loan repayments, or other reliefs.
-Capital Gains Tax on residential property usually has its own 60-day
-reporting/payment deadline, separate from self-assessment - this planner
-shows it together with the balancing payment for simplicity.
+### Google Drive sync
+
+**Sync with Google Drive** in the header signs in with your Google account
+and keeps a copy of your data as `tax-planner-data.json` in the Drive
+*app data* folder - a hidden folder only this app can see. The app is only
+granted that folder (`drive.appdata`), not the rest of your Drive. There's
+still no server of our own: the browser talks straight to Google.
+
+- Edits upload a couple of seconds after you stop typing. Opening or
+  switching back to the app pulls in changes made on another device.
+- The first time a second device connects, or if two devices both changed
+  things before syncing, you're asked which copy to keep. The copy that
+  loses is saved in this browser under the `tax-planner-sync-backup`
+  localStorage key, so a wrong choice can be recovered.
+- Every device still keeps its own local copy, so the app works offline
+  and syncs when it's back online.
+- Google's sign-in tokens last an hour. When one runs out, the app
+  briefly bounces to Google and straight back to get a new one (once per
+  session). If Google wants you to act - e.g. you've signed out of Google -
+  the button turns into **Reconnect Google Drive** instead. Edits made in
+  the meantime stay on the device and upload after you reconnect.
+- Sync only appears in builds with a Google client ID set, and not in the
+  native iOS (Capacitor) shell, whose `capacitor://` address Google won't
+  accept as a sign-in redirect.
+
+**One-time setup** (free, no card needed):
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
+   create a new project (e.g. "Tax Planner").
+2. **APIs & Services > Library**: search for **Google Drive API** and
+   enable it.
+3. **Google Auth Platform** (OAuth consent screen): get started, give it
+   an app name and your email, choose **External**. Under **Audience**,
+   add your own Google address as a test user (or publish the app - the
+   `drive.appdata` scope doesn't need Google's review).
+4. **Clients > Create client**: type **Web application**. Add
+   `https://pluck1983-source.github.io` under *Authorized JavaScript
+   origins* and `https://pluck1983-source.github.io/Tax-planner/` under
+   *Authorized redirect URIs*.
+5. Copy the **Client ID** into `VITE_GOOGLE_CLIENT_ID` in the committed
+   `.env` file (it identifies the app and isn't a secret). Builds without
+   it simply have no sync button. To test locally, also add
+   `http://localhost:5173` as an authorized origin and redirect URI.
 
 ### iOS/mobile notes
 
