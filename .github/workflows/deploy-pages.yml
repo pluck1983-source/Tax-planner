@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/director-tax-savings-app-mrg0cd
   workflow_dispatch:
 
 permissions:
@@ -18,6 +17,9 @@ concurrency:
 
 jobs:
   build:
+    # Only ever publish main. workflow_dispatch can be started on any branch,
+    # so check the ref here too.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

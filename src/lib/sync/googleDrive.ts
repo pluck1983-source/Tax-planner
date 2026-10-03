@@ -12,6 +12,13 @@ import { AuthRequiredError, type CloudProvider, type RemoteFileMeta } from './ty
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const FILE_NAME = 'tax-planner-data.json';
+/**
+ * The access token lives in sessionStorage, not localStorage: it is only good
+ * for an hour, and keeping it per-tab means it is gone when the tab or app is
+ * closed instead of sitting on disk. The sign-in redirect comes back to the
+ * same tab (the CSRF state above is already per-tab), so nothing is lost; a
+ * new tab just does the usual silent re-sign-in.
+ */
 const TOKEN_KEY = 'tax-planner-gdrive-token';
 /** CSRF check for the sign-in round trip */
 const STATE_KEY = 'tax-planner-gdrive-oauth-state';
@@ -35,7 +42,7 @@ function redirectUri(): string {
 
 function readToken(): StoredToken | null {
   try {
-    const raw = localStorage.getItem(TOKEN_KEY);
+    const raw = sessionStorage.getItem(TOKEN_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredToken;
     // Treat tokens as expired a minute early so a request doesn't race expiry.
@@ -46,8 +53,8 @@ function readToken(): StoredToken | null {
 }
 
 function writeToken(token: StoredToken | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) sessionStorage.setItem(TOKEN_KEY, JSON.stringify(token));
+  else sessionStorage.removeItem(TOKEN_KEY);
 }
 
 /**
@@ -69,6 +76,12 @@ function consumeRedirectResult() {
   window.history.replaceState(null, '', window.location.pathname + window.location.search);
 }
 
+// Older builds kept the token in localStorage; remove any left behind.
+try {
+  localStorage.removeItem(TOKEN_KEY);
+} catch {
+  // storage unavailable - nothing to clear
+}
 consumeRedirectResult();
 
 function redirectToGoogle(silent: boolean): Promise<never> {
