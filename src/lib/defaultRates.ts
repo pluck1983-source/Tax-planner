@@ -54,7 +54,7 @@ export const DEFAULT_TAX_YEARS: TaxYearRates[] = [
   makeYear(2023, {
     dividendAllowance: 1000,
     // 2023/24 general-asset CGT rates were 10%/20% (residential property was
-    // 18%/24% - not modelled separately here, edit on the Rates tab if needed).
+    // 18%/28% - not modelled separately here, edit on the Rates tab if needed).
     cgtAnnualExemptAmount: 6000,
     cgtRates: { basic: 0.1, higher: 0.2 },
   }),

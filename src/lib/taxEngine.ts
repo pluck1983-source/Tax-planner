@@ -84,10 +84,14 @@ export function calculateIncomeTax(
   const adjustedNetIncome = Math.max(0, totalIncome - grossPension);
   const pa = personalAllowanceFor(rates, adjustedNetIncome);
 
+  // Bands are measured on taxable income (after the personal allowance).
+  // Relief-at-source contributions raise both the basic-rate limit and the
+  // higher-rate limit (where the additional rate starts) by the gross amount.
+  const extendedHigherRateLimit = rates.additionalRateThreshold + grossPension;
   const bandsFor = (rateSet: { basic: number; higher: number; additional: number }): Band[] => [
     { width: extendedBasicRateBandWidth, rate: rateSet.basic },
     {
-      width: Math.max(0, rates.additionalRateThreshold - pa - extendedBasicRateBandWidth),
+      width: Math.max(0, extendedHigherRateLimit - extendedBasicRateBandWidth),
       rate: rateSet.higher,
     },
     { width: Infinity, rate: rateSet.additional },
@@ -116,12 +120,12 @@ export function calculateIncomeTax(
   // non-savings income already using up that space in the basic band.
   const startingRateForSavingsRemaining = Math.max(0, rates.savingsStartingRateBandWidth - taxableNonDividend);
 
-  // Personal Savings Allowance depends on which band total income falls into.
-  const higherRateStart = pa + extendedBasicRateBandWidth;
+  // Personal Savings Allowance depends on which band total taxable income falls into.
+  const totalTaxableIncome = Math.max(0, totalIncome - pa);
   const personalSavingsAllowance =
-    totalIncome <= higherRateStart
+    totalTaxableIncome <= extendedBasicRateBandWidth
       ? rates.savingsAllowance.basic
-      : totalIncome <= rates.additionalRateThreshold
+      : totalTaxableIncome <= extendedHigherRateLimit
         ? rates.savingsAllowance.higher
         : rates.savingsAllowance.additional;
 
@@ -179,9 +183,18 @@ export function calculateIncomeTax(
   };
 }
 
-/** Estimates PAYE tax that would be withheld on salary alone under a standard tax code. */
+/** Estimates PAYE tax that would be withheld on a year's salary alone under a standard tax code. */
 export function estimatePayeTax(rates: TaxYearRates, salary: number): number {
   return calculateIncomeTax(rates, salary, 0, 0).nonDividendTax;
+}
+
+/**
+ * PAYE on one month's salary: a standard tax code spreads the annual
+ * allowance and bands evenly over 12 pay periods, so a month is taxed like
+ * a twelfth of the same salary paid all year.
+ */
+export function estimateMonthlyPayeTax(rates: TaxYearRates, monthlySalary: number): number {
+  return estimatePayeTax(rates, monthlySalary * 12) / 12;
 }
 
 export interface CapitalGainsBreakdown {
@@ -228,13 +241,23 @@ export function totalDividends(totals: MonthlyTotals): number {
   return totals.dividendsEmployment + totals.dividendsShareDealing;
 }
 
-export function sumMonths(months: MonthlyEntry[], rates: TaxYearRates, uptoIndex?: number): MonthlyTotals {
+/**
+ * Adds up a year's entries. `entriesAreAnnual` is true for indicative years,
+ * whose single entry holds a whole year's salary - it changes how a blank
+ * "PAYE tax deducted" is estimated (annual vs. one month's pay period).
+ */
+export function sumMonths(
+  months: MonthlyEntry[],
+  rates: TaxYearRates,
+  uptoIndex?: number,
+  entriesAreAnnual = false,
+): MonthlyTotals {
   const slice = uptoIndex === undefined ? months : months.filter((m) => m.monthIndex <= uptoIndex);
+  const estimatePaye = entriesAreAnnual ? estimatePayeTax : estimateMonthlyPayeTax;
   return slice.reduce<MonthlyTotals>(
     (acc, m) => ({
       paye: acc.paye + m.paye,
-      payeTaxDeducted:
-        acc.payeTaxDeducted + (m.payeTaxDeducted ?? estimatePayeTax(rates, m.paye)),
+      payeTaxDeducted: acc.payeTaxDeducted + (m.payeTaxDeducted ?? estimatePaye(rates, m.paye)),
       dividendsEmployment: acc.dividendsEmployment + m.dividendsEmployment,
       dividendsShareDealing: acc.dividendsShareDealing + m.dividendsShareDealing,
       otherIncome: acc.otherIncome + m.otherIncome,
@@ -290,7 +313,7 @@ function computeReliefsAndCalc(year: TaxYearData, totals: MonthlyTotals) {
 }
 
 export function calculateYearLiability(year: TaxYearData): YearLiability {
-  const totals = sumMonths(year.months, year.rates);
+  const totals = sumMonths(year.months, year.rates, undefined, year.isIndicative);
   const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, totals);
   const incomeTaxSelfAssessmentLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted);
   const totalSelfAssessmentLiability = incomeTaxSelfAssessmentLiability + capitalGains.tax;
@@ -470,8 +493,8 @@ export function estimateFollowingYear(state: PlannerState): FollowingYearEstimat
 /**
  * The amount HMRC would actually expect on a given month, for showing as a
  * placeholder next to the "paid to HMRC" field. Only January (payment on
- * account 1 for this year + the prior year's balancing payment, both due
- * 31 Jan) and July (the prior year's payment on account 2, due 31 Jul)
+ * account 1 for this year + the prior year's balancing payment, tracked or
+ * entered as a known untracked amount, all due 31 Jan) and July (the prior year's payment on account 2, due 31 Jul)
  * ever have anything due - every other month returns 0.
  */
 export function calculateExpectedHmrcPayment(
@@ -489,7 +512,7 @@ export function calculateExpectedHmrcPayment(
   if (monthIndex === 9) {
     // January: this year's POA1, plus the prior year's balancing payment (both due 31 Jan).
     const thisYearPoa = calculatePaymentsOnAccount(year, priorYear);
-    let expected = thisYearPoa.poa1?.amount ?? 0;
+    let expected = (thisYearPoa.poa1?.amount ?? 0) + (thisYearPoa.untrackedPriorBalancing?.amount ?? 0);
     if (priorYear) {
       const priorYearPoa = calculatePaymentsOnAccount(priorYear, priorPriorYear);
       expected += Math.max(0, priorYearPoa.balancingPayment.amount);
@@ -522,7 +545,7 @@ export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
   const results: MonthlyProgress[] = [];
   let cumulativeSaved = 0;
   for (const month of sorted) {
-    const totals = sumMonths(year.months, year.rates, month.monthIndex);
+    const totals = sumMonths(year.months, year.rates, month.monthIndex, year.isIndicative);
     const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, totals);
     const cumulativeTargetLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted) + capitalGains.tax;
     cumulativeSaved += month.savedThisMonth;
