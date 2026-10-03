@@ -36,12 +36,38 @@ export const DIVIDEND_RATES_TO_2025 = { basic: 0.0875, higher: 0.3375, additiona
  */
 export const DIVIDEND_RATES_FROM_2026 = { basic: 0.1075, higher: 0.3575, additional: 0.3935 };
 
+/** Savings interest rates up to 2026/27 - the same as the salary rates */
+export const SAVINGS_RATES_TO_2026 = { basic: 0.2, higher: 0.4, additional: 0.45 };
+/** From 6 April 2027 savings interest rates rise by 2 points (November 2025 Budget). */
+export const SAVINGS_RATES_FROM_2027 = { basic: 0.22, higher: 0.42, additional: 0.47 };
+
+type RateSet = { basic: number; higher: number; additional: number };
+const sameRates = (a: RateSet, b: RateSet) => a.basic === b.basic && a.higher === b.higher && a.additional === b.additional;
+
+/**
+ * Brings a year's rates up to date with rate changes that start partway
+ * through the run of years: rates that still exactly match the old defaults
+ * (so were never edited by hand) are moved onto the new ones for years the
+ * change applies to. Used when loading saved data and when a new year
+ * copies the previous year's rates.
+ */
+export function applyScheduledRateChanges(rates: TaxYearRates): TaxYearRates {
+  const startYear = startYearFromYearId(rates.id);
+  let { dividendRates, savingsRates } = rates;
+  if (startYear >= 2026 && sameRates(dividendRates, DIVIDEND_RATES_TO_2025)) dividendRates = { ...DIVIDEND_RATES_FROM_2026 };
+  if (startYear >= 2027 && sameRates(savingsRates, SAVINGS_RATES_TO_2026)) savingsRates = { ...SAVINGS_RATES_FROM_2027 };
+  return dividendRates === rates.dividendRates && savingsRates === rates.savingsRates
+    ? rates
+    : { ...rates, dividendRates, savingsRates };
+}
+
 function makeYear(startYear: number, overrides: Partial<TaxYearRates> = {}): TaxYearRates {
   const endYear = startYear + 1;
   const id = `${startYear}-${String(endYear).slice(-2)}`;
   return {
     ...BASE_RATES,
     dividendRates: { ...(startYear >= 2026 ? DIVIDEND_RATES_FROM_2026 : DIVIDEND_RATES_TO_2025) },
+    savingsRates: { ...(startYear >= 2027 ? SAVINGS_RATES_FROM_2027 : SAVINGS_RATES_TO_2026) },
     id,
     label: `${startYear}/${String(endYear).slice(-2)}`,
     startDate: `${startYear}-04-06`,

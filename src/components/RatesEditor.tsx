@@ -79,7 +79,8 @@ export function RatesEditor({ rates, onChange }: Props) {
       <section>
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Savings interest</h3>
         <p className="text-xs text-slate-400 mb-3 max-w-2xl">
-          Untaxed interest stacks after salary/other income but before dividends. The starting rate band is reduced
+          Untaxed interest stacks after salary/other income but before dividends. Its rates match the salary rates
+          until 2026/27 and are 2 points higher from 2027/28. The starting rate band is reduced
           £1 for £1 by non-savings income; the Personal Savings Allowance used depends on which band your total
           income falls into.
         </p>
@@ -90,6 +91,11 @@ export function RatesEditor({ rates, onChange }: Props) {
             onChange={(v) => onChange({ savingsStartingRateBandWidth: v })}
             suffix="£"
           />
+        </div>
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <Field label="Basic rate" value={rates.savingsRates.basic} onChange={(v) => onChange({ savingsRates: { ...rates.savingsRates, basic: v } })} suffix="decimal" />
+          <Field label="Higher rate" value={rates.savingsRates.higher} onChange={(v) => onChange({ savingsRates: { ...rates.savingsRates, higher: v } })} suffix="decimal" />
+          <Field label="Additional rate" value={rates.savingsRates.additional} onChange={(v) => onChange({ savingsRates: { ...rates.savingsRates, additional: v } })} suffix="decimal" />
         </div>
         <div className="grid grid-cols-3 gap-3 mt-3">
           <Field

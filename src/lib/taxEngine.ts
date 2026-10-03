@@ -1,6 +1,6 @@
 import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates } from './types';
 import { MONTH_LABELS } from './types';
-import { getDefaultRatesForYear, startYearFromYearId, yearIdFromStartYear } from './defaultRates';
+import { applyScheduledRateChanges, getDefaultRatesForYear, startYearFromYearId, yearIdFromStartYear } from './defaultRates';
 
 export interface Band {
   width: number; // Infinity for the top band
@@ -107,9 +107,9 @@ export function calculateIncomeTax(
   const savings = Math.max(0, savingsIncome);
   const taxableSavings = Math.max(0, savings - unusedPaAfterNonDividend);
 
-  // Savings interest stacks on top of non-savings income, using the same
+  // Savings interest stacks on top of non-savings income, using its own
   // basic/higher/additional rates and whatever band capacity remains.
-  const bandsAfterNonDividend = bandsFor(rates.nonDividendRates).map((band, i) => ({
+  const bandsAfterNonDividend = bandsFor(rates.savingsRates).map((band, i) => ({
     ...band,
     width: Math.max(0, band.width - nonDividendResult.perBand[i]),
   }));
@@ -465,9 +465,15 @@ export function estimateFollowingYear(state: PlannerState): FollowingYearEstimat
 
   const latestRates = state.years[latestYearId]?.rates;
   const baseRates = getDefaultRatesForYear(followingStartYear);
-  // Carry forward the latest known rates/thresholds (frozen until 2028) rather than guessing.
+  // Carry forward the latest known rates/thresholds (frozen until 2031) rather than guessing.
   const rates: TaxYearRates = latestRates
-    ? { ...latestRates, id: baseRates.id, label: baseRates.label, startDate: baseRates.startDate, endDate: baseRates.endDate }
+    ? applyScheduledRateChanges({
+        ...latestRates,
+        id: baseRates.id,
+        label: baseRates.label,
+        startDate: baseRates.startDate,
+        endDate: baseRates.endDate,
+      })
     : baseRates;
 
   const syntheticFollowingYear: TaxYearData = {
