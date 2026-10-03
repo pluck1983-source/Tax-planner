@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local settings. The Google client ID for the live build comes from the
+# VITE_GOOGLE_CLIENT_ID repository variable (see deploy-pages.yml).
+.env
+.env.*
+!.env.example
