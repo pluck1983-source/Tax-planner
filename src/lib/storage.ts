@@ -1,8 +1,7 @@
 import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates, YearPrediction } from './types';
 import {
   DEFAULT_TAX_YEARS,
-  DIVIDEND_RATES_FROM_2026,
-  DIVIDEND_RATES_TO_2025,
+  applyScheduledRateChanges,
   getDefaultRatesForYear,
   startYearFromYearId,
   yearIdFromStartYear,
@@ -120,20 +119,6 @@ function migrateMonth(raw: MonthlyEntry): MonthlyEntry {
 }
 
 /**
- * Years from 2026/27 onward created before the April 2026 dividend rate rise
- * was added here were seeded with the old rates. If a year still has exactly
- * those old defaults (i.e. they were never edited by hand), move it onto the
- * current rates; anything customised on the Rates tab is left alone.
- */
-function migrateDividendRates(id: string, dividendRates: TaxYearRates['dividendRates']): TaxYearRates['dividendRates'] {
-  const stillOldDefaults =
-    dividendRates.basic === DIVIDEND_RATES_TO_2025.basic &&
-    dividendRates.higher === DIVIDEND_RATES_TO_2025.higher &&
-    dividendRates.additional === DIVIDEND_RATES_TO_2025.additional;
-  return startYearFromYearId(id) >= 2026 && stillOldDefaults ? { ...DIVIDEND_RATES_FROM_2026 } : dividendRates;
-}
-
-/**
  * Backfills fields that didn't exist in older saved/exported data (e.g. from
  * before pension/Gift Aid/CGT support was added) so stale localStorage or
  * import files don't produce NaN once those fields are read.
@@ -149,12 +134,13 @@ function normalizeState(state: PlannerState): PlannerState {
         ? { ...year.poaOverride, priorYearBalancingPayment: year.poaOverride.priorYearBalancingPayment ?? 0 }
         : null,
       prediction: year.prediction ?? null,
-      rates: {
+      rates: applyScheduledRateChanges({
         ...RATES_FALLBACK_DEFAULTS,
         ...year.rates,
         pensionGrossUpRate: year.rates.pensionGrossUpRate ?? legacyRates.pensionGiftAidGrossUpRate ?? 0.2,
-        dividendRates: migrateDividendRates(id, year.rates.dividendRates),
-      },
+        // Saved before savings had their own rates, when they shared the salary rates.
+        savingsRates: year.rates.savingsRates ?? { ...year.rates.nonDividendRates },
+      }),
       months: year.months.map((m) => migrateMonth(m)),
     };
   }
@@ -225,7 +211,13 @@ export function addNewYear(state: PlannerState): PlannerState {
   const latestRates = latestId ? state.years[latestId]?.rates : undefined;
   const rates =
     latestRates && !DEFAULT_KNOWN_IDS.has(id)
-      ? { ...latestRates, id: baseRates.id, label: baseRates.label, startDate: baseRates.startDate, endDate: baseRates.endDate }
+      ? applyScheduledRateChanges({
+          ...latestRates,
+          id: baseRates.id,
+          label: baseRates.label,
+          startDate: baseRates.startDate,
+          endDate: baseRates.endDate,
+        })
       : baseRates;
 
   const yearData = createYearData(rates);

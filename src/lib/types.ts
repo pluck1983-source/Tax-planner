@@ -51,6 +51,15 @@ export interface TaxYearRates {
     higher: number;
   };
 
+  /**
+   * Rates on savings interest above the nil-rate amounts. The same as the
+   * salary rates until 2026/27; from 6 April 2027 they're 2 points higher.
+   */
+  savingsRates: {
+    basic: number;
+    higher: number;
+    additional: number;
+  };
   /** Starting rate for savings: width of the 0% band, reduced £1 for £1 by non-savings income using it up */
   savingsStartingRateBandWidth: number;
   /** Personal Savings Allowance, which depends on which band the taxpayer's total income falls into */
