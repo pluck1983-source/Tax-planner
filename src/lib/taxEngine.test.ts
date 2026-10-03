@@ -175,9 +175,32 @@ describe('expected January payment', () => {
 });
 
 describe('monthly savings target', () => {
-  it('reaches the full-year bill by March', () => {
-    const year = monthlyYear(2025, 12570, 50000);
-    const progress = calculateMonthlyProgress(year);
-    expect(progress[11].cumulativeTargetLiability).toBeCloseTo(calculateYearLiability(year).totalSelfAssessmentLiability, 2);
+  const year = monthlyYear(2026, 12570, 50000);
+  const fullBill = calculateYearLiability(year).totalSelfAssessmentLiability;
+  const progress = calculateMonthlyProgress(year);
+
+  it('reaches the full-year bill by March', () => expect(progress[11].cumulativeTargetLiability).toBeCloseTo(fullBill, 2));
+
+  it('builds up evenly through the year for steady income', () => {
+    // 6/12 of the bill by September, not the tax on six months' income alone
+    expect(progress[5].cumulativeTargetLiability).toBeCloseTo(fullBill / 2, 2);
+    expect(progress[0].cumulativeTargetLiability).toBeCloseTo(fullBill / 12, 2);
+  });
+
+  it('adds CGT in full in the month the gain is made', () => {
+    const withGain: TaxYearData = {
+      ...year,
+      months: year.months.map((m) => (m.monthIndex === 2 ? { ...m, capitalGains: 13000 } : m)),
+    };
+    const gainProgress = calculateMonthlyProgress(withGain);
+    const cgt = calculateYearLiability(withGain).capitalGains.tax;
+    expect(cgt).toBeGreaterThan(0);
+    expect(gainProgress[2].cumulativeTargetLiability - progress[2].cumulativeTargetLiability).toBeCloseTo(cgt, 2);
+  });
+
+  it('asks for the whole bill from April on an indicative year', () => {
+    const indicative = indicativeYear(2026, 12570, 50000);
+    const bill = calculateYearLiability(indicative).totalSelfAssessmentLiability;
+    expect(calculateMonthlyProgress(indicative)[0].cumulativeTargetLiability).toBeCloseTo(bill, 2);
   });
 });

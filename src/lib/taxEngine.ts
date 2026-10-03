@@ -535,10 +535,21 @@ export interface MonthlyProgress {
 }
 
 /**
- * For each month, computes the cumulative self-assessment liability (income
- * tax + CGT) implied by everything entered so far this year - i.e. the
- * amount that should have been saved by that point to cover the year's tax
- * bill if nothing else changed for the rest of the year.
+ * For each month, how much should have been saved by then to cover the
+ * year's self-assessment bill (income tax + CGT), spread evenly across the
+ * year rather than back-loaded.
+ *
+ * Income so far is projected to a full year at the same run rate, the
+ * self-assessment income tax on that projection is worked out, and the
+ * elapsed share of it (e.g. 6/12 by September) becomes the target. Taxing
+ * only the income received so far would leave the personal allowance and
+ * dividend allowance to absorb the early months, so the target would start
+ * at nothing and climb steeply from January - just as payments fall due.
+ * By March the projection is the real year, so the target equals the bill.
+ *
+ * Capital gains are one-offs rather than a run rate, so CGT on gains made
+ * so far is added in full as soon as they happen. Indicative years hold the
+ * whole year in a single entry, so their target is the full bill from April.
  */
 export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
   const sorted = [...year.months].sort((a, b) => a.monthIndex - b.monthIndex);
@@ -546,18 +557,39 @@ export function calculateMonthlyProgress(year: TaxYearData): MonthlyProgress[] {
   let cumulativeSaved = 0;
   for (const month of sorted) {
     const totals = sumMonths(year.months, year.rates, month.monthIndex, year.isIndicative);
-    const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, totals);
-    const cumulativeTargetLiability = Math.max(0, taxBreakdown.totalTax - totals.payeTaxDeducted) + capitalGains.tax;
+    const elapsedShare = year.isIndicative ? 1 : (month.monthIndex + 1) / 12;
+    const projected = scaleIncome(totals, 1 / elapsedShare);
+    const { taxBreakdown, capitalGains } = computeReliefsAndCalc(year, projected);
+    const projectedIncomeTaxBill = Math.max(0, taxBreakdown.totalTax - projected.payeTaxDeducted);
+    const cumulativeTargetLiability = projectedIncomeTaxBill * elapsedShare + capitalGains.tax;
     cumulativeSaved += month.savedThisMonth;
     results.push({
       monthIndex: month.monthIndex,
-      cumulativeIncome: taxBreakdown.totalIncome + totals.capitalGains,
+      cumulativeIncome: totalIncomeOf(totals),
       cumulativeTargetLiability,
       cumulativeSaved,
       variance: cumulativeSaved - cumulativeTargetLiability,
     });
   }
   return results;
+}
+
+function totalIncomeOf(totals: MonthlyTotals): number {
+  return totals.paye + totals.otherIncome + totals.savingsInterest + totalDividends(totals) + totals.capitalGains;
+}
+
+/** Scales the recurring income figures (and PAYE and pension that go with them) - not capital gains or cash movements. */
+function scaleIncome(totals: MonthlyTotals, factor: number): MonthlyTotals {
+  return {
+    ...totals,
+    paye: totals.paye * factor,
+    payeTaxDeducted: totals.payeTaxDeducted * factor,
+    dividendsEmployment: totals.dividendsEmployment * factor,
+    dividendsShareDealing: totals.dividendsShareDealing * factor,
+    otherIncome: totals.otherIncome * factor,
+    savingsInterest: totals.savingsInterest * factor,
+    pensionContribution: totals.pensionContribution * factor,
+  };
 }
 
 export interface TimelinePoint {
