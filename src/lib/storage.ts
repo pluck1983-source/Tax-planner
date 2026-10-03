@@ -1,6 +1,8 @@
 import type { MonthlyEntry, PlannerState, TaxYearData, TaxYearRates, YearPrediction } from './types';
 import {
   DEFAULT_TAX_YEARS,
+  DIVIDEND_RATES_FROM_2026,
+  DIVIDEND_RATES_TO_2025,
   getDefaultRatesForYear,
   startYearFromYearId,
   yearIdFromStartYear,
@@ -118,6 +120,20 @@ function migrateMonth(raw: MonthlyEntry): MonthlyEntry {
 }
 
 /**
+ * Years from 2026/27 onward created before the April 2026 dividend rate rise
+ * was added here were seeded with the old rates. If a year still has exactly
+ * those old defaults (i.e. they were never edited by hand), move it onto the
+ * current rates; anything customised on the Rates tab is left alone.
+ */
+function migrateDividendRates(id: string, dividendRates: TaxYearRates['dividendRates']): TaxYearRates['dividendRates'] {
+  const stillOldDefaults =
+    dividendRates.basic === DIVIDEND_RATES_TO_2025.basic &&
+    dividendRates.higher === DIVIDEND_RATES_TO_2025.higher &&
+    dividendRates.additional === DIVIDEND_RATES_TO_2025.additional;
+  return startYearFromYearId(id) >= 2026 && stillOldDefaults ? { ...DIVIDEND_RATES_FROM_2026 } : dividendRates;
+}
+
+/**
  * Backfills fields that didn't exist in older saved/exported data (e.g. from
  * before pension/Gift Aid/CGT support was added) so stale localStorage or
  * import files don't produce NaN once those fields are read.
@@ -137,6 +153,7 @@ function normalizeState(state: PlannerState): PlannerState {
         ...RATES_FALLBACK_DEFAULTS,
         ...year.rates,
         pensionGrossUpRate: year.rates.pensionGrossUpRate ?? legacyRates.pensionGiftAidGrossUpRate ?? 0.2,
+        dividendRates: migrateDividendRates(id, year.rates.dividendRates),
       },
       months: year.months.map((m) => migrateMonth(m)),
     };

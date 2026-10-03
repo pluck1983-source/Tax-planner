@@ -3,9 +3,9 @@ import type { TaxYearRates } from './types';
 /**
  * Rest-of-UK (England, Wales, Northern Ireland) rates. Scotland has separate
  * non-dividend income tax bands - not modelled here. Thresholds have been
- * frozen since 2021/22 and are frozen until April 2028 per government policy,
- * so 2026/27 and 2027/28 default to the same figures as 2025/26 - edit them
- * on the Rates tab once HMRC/the Budget confirms otherwise.
+ * frozen since 2021/22, and the November 2025 Budget extended the freeze to
+ * April 2031, so later years default to the same thresholds as 2025/26 -
+ * edit them on the Rates tab if a future Budget changes them.
  */
 const BASE_RATES = {
   personalAllowance: 12570,
@@ -15,7 +15,6 @@ const BASE_RATES = {
   additionalRateThreshold: 125140,
   nonDividendRates: { basic: 0.2, higher: 0.4, additional: 0.45 },
   dividendAllowance: 500,
-  dividendRates: { basic: 0.0875, higher: 0.3375, additional: 0.3935 },
   poaThreshold: 1000,
   poaSourceCollectionFraction: 0.8,
   pensionGrossUpRate: 0.2,
@@ -29,11 +28,20 @@ const BASE_RATES = {
   savingsAllowance: { basic: 1000, higher: 500, additional: 0 },
 };
 
+/** Dividend rates from 2022/23 to 2025/26 */
+export const DIVIDEND_RATES_TO_2025 = { basic: 0.0875, higher: 0.3375, additional: 0.3935 };
+/**
+ * From 6 April 2026 the ordinary and upper dividend rates each rose by 2
+ * percentage points (November 2025 Budget); the additional rate is unchanged.
+ */
+export const DIVIDEND_RATES_FROM_2026 = { basic: 0.1075, higher: 0.3575, additional: 0.3935 };
+
 function makeYear(startYear: number, overrides: Partial<TaxYearRates> = {}): TaxYearRates {
   const endYear = startYear + 1;
   const id = `${startYear}-${String(endYear).slice(-2)}`;
   return {
     ...BASE_RATES,
+    dividendRates: { ...(startYear >= 2026 ? DIVIDEND_RATES_FROM_2026 : DIVIDEND_RATES_TO_2025) },
     id,
     label: `${startYear}/${String(endYear).slice(-2)}`,
     startDate: `${startYear}-04-06`,
