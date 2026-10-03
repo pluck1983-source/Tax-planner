@@ -1,7 +1,7 @@
 import type { PlannerState, TaxYearData } from '../lib/types';
 import { MONTH_LABELS } from '../lib/types';
 import { startYearFromYearId } from '../lib/defaultRates';
-import { calculateExpectedHmrcPayment, estimatePayeTax } from '../lib/taxEngine';
+import { calculateExpectedHmrcPayment, estimateMonthlyPayeTax } from '../lib/taxEngine';
 
 /** 0=Apr..8=Dec fall in the tax year's start calendar year; 9=Jan..11=Mar fall in the year after. */
 function calendarYearForMonth(startYear: number, monthIndex: number): number {
@@ -82,7 +82,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
         </thead>
         <tbody>
           {months.map((m) => {
-            const estimatedPaye = estimatePayeTax(year.rates, m.paye);
+            const estimatedPaye = estimateMonthlyPayeTax(year.rates, m.paye);
             return (
               <tr key={m.monthIndex} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="py-1.5 pr-2 font-medium text-slate-700 dark:text-slate-200">
