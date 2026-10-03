@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -6,11 +6,37 @@ import { VitePWA } from 'vite-plugin-pwa'
 // in production, but from the root locally.
 const base = process.env.GITHUB_PAGES ? '/Tax-planner/' : '/'
 
+// Content-Security-Policy, added to the built index.html only. The dev server
+// needs an inline React-refresh script and a websocket for hot reload, which
+// this policy would block. Google sign-in is a full-page redirect (no Google
+// script or iframe), so only the Drive/OAuth API hosts the app fetches from
+// are allowed out. frame-ancestors can't be set from a meta tag.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ')
+
+const cspMetaTag: Plugin = {
+  name: 'csp-meta-tag',
+  apply: 'build',
+  transformIndexHtml: () => [
+    { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP }, injectTo: 'head-prepend' },
+  ],
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base,
   plugins: [
     react(),
+    cspMetaTag,
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/favicon-32.png', 'icons/apple-touch-icon.png'],
