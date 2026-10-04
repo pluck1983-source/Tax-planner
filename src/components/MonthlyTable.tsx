@@ -32,7 +32,7 @@ function NumberCell({
     <input
       type="number"
       inputMode={allowNegative ? undefined : 'decimal'}
-      className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+      className="w-24 lg:w-[5.5rem] px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
       value={value === 0 ? '' : value}
       placeholder={placeholder ?? '0'}
       title={title}
@@ -50,7 +50,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-left text-slate-400 text-xs">
-            <th></th>
+            <th className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-950"></th>
             <th className="pb-1 px-2 font-medium text-center" colSpan={6}>
               Income
             </th>
@@ -66,17 +66,17 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             <th></th>
           </tr>
           <tr className="text-left text-slate-500 dark:text-slate-400">
-            <th className="py-2 pr-2 font-medium">Month</th>
-            <th className="py-2 px-2 font-medium text-right">Salary (PAYE)</th>
-            <th className="py-2 px-2 font-medium text-right">PAYE tax deducted</th>
-            <th className="py-2 px-2 font-medium text-right">Dividends (company)</th>
-            <th className="py-2 px-2 font-medium text-right">Dividends (share dealing)</th>
-            <th className="py-2 px-2 font-medium text-right">Other income</th>
-            <th className="py-2 px-2 font-medium text-right">Interest (untaxed)</th>
-            <th className="py-2 px-2 font-medium text-right">Pension (net paid)</th>
-            <th className="py-2 px-2 font-medium text-right">Capital gains</th>
-            <th className="py-2 px-2 font-medium text-right">Saved this month</th>
-            <th className="py-2 px-2 font-medium text-right">Paid to HMRC</th>
+            <th className="py-2 pr-2 font-medium sticky left-0 z-10 bg-slate-50 dark:bg-slate-950">Month</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Salary (PAYE)</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">PAYE tax deducted</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Dividends (company)</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Dividends (share dealing)</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Other income</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Interest (untaxed)</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Pension (net paid)</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Capital gains</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Saved this month</th>
+            <th className="py-2 px-2 lg:px-1 font-medium text-right">Paid to HMRC</th>
             <th className="py-2 pl-2 font-medium">Notes</th>
           </tr>
         </thead>
@@ -85,17 +85,17 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
             const estimatedPaye = estimateMonthlyPayeTax(year.rates, m.paye);
             return (
               <tr key={m.monthIndex} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="py-1.5 pr-2 font-medium text-slate-700 dark:text-slate-200">
+                <td className="py-1.5 pr-2 font-medium text-slate-700 dark:text-slate-200 sticky left-0 z-10 bg-slate-50 dark:bg-slate-950">
                   {MONTH_LABELS[m.monthIndex]}
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell value={m.paye} onChange={(v) => onUpdateMonth(m.monthIndex, { paye: v })} />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <input
                     type="number"
                     inputMode="decimal"
-                    className="w-24 px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
+                    className="w-24 lg:w-[5.5rem] px-2 py-1 rounded border border-slate-200 bg-white text-right tabular-nums dark:bg-slate-800 dark:border-slate-700"
                     value={m.payeTaxDeducted ?? ''}
                     placeholder={estimatedPaye ? String(Math.round(estimatedPaye)) : '0'}
                     onChange={(e) =>
@@ -106,48 +106,48 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                     title="Leave blank to auto-estimate from salary using a standard tax code"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.dividendsEmployment}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { dividendsEmployment: v })}
                     title="Dividends from your own company, as director/shareholder-employee"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.dividendsShareDealing}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { dividendsShareDealing: v })}
                     title="Dividends from other shareholdings, e.g. a personal share-dealing/trading account"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.otherIncome}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { otherIncome: v })}
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.savingsInterest}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { savingsInterest: v })}
                     title="Untaxed UK bank/building society interest - most interest is now paid gross, without tax deducted at source"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.pensionContribution}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { pensionContribution: v })}
                     title="Net amount paid into a personal (relief-at-source) pension, e.g. a SIPP - not workplace contributions taken from gross pay"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.capitalGains}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { capitalGains: v })}
                     title="Net chargeable gains realised this month, before the annual exempt amount"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.savedThisMonth}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { savedThisMonth: v })}
@@ -155,7 +155,7 @@ export function MonthlyTable({ year, state, onUpdateMonth }: Props) {
                     title="Negative = money taken back out of savings this month (e.g. a surplus withdrawn but not paid to HMRC)"
                   />
                 </td>
-                <td className="py-1.5 px-2 text-right">
+                <td className="py-1.5 px-2 lg:px-1 text-right">
                   <NumberCell
                     value={m.hmrcPaymentMade}
                     onChange={(v) => onUpdateMonth(m.monthIndex, { hmrcPaymentMade: v })}

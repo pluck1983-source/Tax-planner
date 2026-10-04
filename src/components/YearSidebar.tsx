@@ -11,7 +11,7 @@ export function YearSidebar({ state, onSelect, onAddYear, onAddPriorYear }: Prop
   const sortedIds = [...state.yearOrder].sort();
 
   return (
-    <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible md:w-48 shrink-0">
+    <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible md:w-48 md:sticky md:top-6 md:self-start shrink-0">
       <button
         type="button"
         onClick={onAddPriorYear}
