@@ -114,7 +114,7 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="max-w-5xl lg:max-w-[96rem] mx-auto px-4 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold">Director Tax Planner</h1>
             <p className="text-xs text-slate-400">
@@ -150,7 +150,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+      <main className="max-w-5xl lg:max-w-[96rem] mx-auto px-4 lg:px-8 py-6 flex flex-col md:flex-row gap-6">
         <YearSidebar state={state} onSelect={selectYear} onAddYear={addYear} onAddPriorYear={addPriorYear} />
 
         <div className="flex-1 min-w-0">
@@ -238,7 +238,7 @@ function App() {
                 ))}
 
               {tab === 'summary' && (
-                <div className="space-y-8">
+                <div className="space-y-8 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-8 xl:items-start">
                   <YearSummary
                     year={selectedYear}
                     priorYear={priorYear}
@@ -249,17 +249,21 @@ function App() {
                       This year is entered as yearly totals, so a month-on-month savings curve isn't shown.
                     </p>
                   ) : (
-                    <SavingsChart year={selectedYear} />
+                    <div className="xl:sticky xl:top-6">
+                      <SavingsChart year={selectedYear} />
+                    </div>
                   )}
                 </div>
               )}
 
               {tab === 'prediction' && (
-                <PredictionView
-                  year={selectedYear}
-                  priorYear={priorYear}
-                  onSetPrediction={(prediction) => setPrediction(selectedYear.id, prediction)}
-                />
+                <div className="max-w-5xl">
+                  <PredictionView
+                    year={selectedYear}
+                    priorYear={priorYear}
+                    onSetPrediction={(prediction) => setPrediction(selectedYear.id, prediction)}
+                  />
+                </div>
               )}
 
               {tab === 'timeline' && <TimelineView state={state} onSetOpeningBalance={setOpening} />}
@@ -269,14 +273,16 @@ function App() {
               )}
 
               {tab === 'rates' && (
-                <RatesEditor rates={selectedYear.rates} onChange={(patch) => updateRates(selectedYear.id, patch)} />
+                <div className="max-w-5xl">
+                  <RatesEditor rates={selectedYear.rates} onChange={(patch) => updateRates(selectedYear.id, patch)} />
+                </div>
               )}
             </>
           )}
         </div>
       </main>
 
-      <footer className="max-w-5xl mx-auto px-4 pb-8 text-xs text-slate-400">
+      <footer className="max-w-5xl lg:max-w-[96rem] mx-auto px-4 lg:px-8 pb-8 text-xs text-slate-400">
         Estimates only, for planning purposes - not tax advice. Figures are calculated from rest-of-UK (England,
         Wales, Northern Ireland) income tax, dividend tax and Capital Gains Tax rules, including relief-at-source
         pension contributions. They don't account for Scottish income tax rates, marriage allowance, the High

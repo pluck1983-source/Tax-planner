@@ -66,7 +66,7 @@ function PoaOverridePanel({ year, onSetPoaOverride }: Pick<Props, 'year' | 'onSe
       </div>
 
       {open && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-3 mt-4">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-slate-500 dark:text-slate-400">
               {year.rates.label} payment on account 1 (due 31 Jan {dueCalendarYear})
@@ -141,7 +141,7 @@ export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-3">
         <StatCard label="Total income" value={formatGBP(taxBreakdown.totalIncome)} />
         <StatCard label="Income & dividend tax" value={formatGBP(taxBreakdown.totalTax)} />
         <StatCard label="Collected via PAYE" value={formatGBP(totals.payeTaxDeducted)} />
@@ -153,7 +153,7 @@ export function YearSummary({ year, priorYear, onSetPoaOverride }: Props) {
       </div>
 
       {(hasGains || hasReliefs || hasSavingsInterest) && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-2 gap-3">
           {hasReliefs && (
             <StatCard
               label="Personal allowance"
