@@ -108,10 +108,20 @@ salary, dividends and other income.
 ### Google Drive sync
 
 **Sync with Google Drive** in the header signs in with your Google account
-and keeps a copy of your data as `tax-planner-data.json` in the Drive
-*app data* folder - a hidden folder only this app can see. The app is only
-granted that folder (`drive.appdata`), not the rest of your Drive. There's
-still no server of our own: the browser talks straight to Google.
+and keeps a copy of your data as `tax-planner-data.json` in your Google
+Drive, where you can see, download and back it up. The app uses the
+`drive.file` scope, so it can only reach files it created itself, not the
+rest of your Drive. There's still no server of our own: the browser talks
+straight to Google.
+
+- Don't rename, move to a shared drive or delete `tax-planner-data.json`
+  in Drive. If it's deleted, the next device to sync uploads its own copy.
+- Older builds kept the file in Drive's hidden *app data* folder
+  (`drive.appdata`). The app still asks for that scope so it can move the
+  old copy across: the first sync after updating copies it into Drive
+  unchanged and renames the hidden one to `tax-planner-data.migrated.json`
+  as a backup (it is never deleted). Each device asks you to approve the
+  new Drive permission once; tick both boxes on Google's screen.
 
 - Edits upload a couple of seconds after you stop typing. Opening or
   switching back to the app pulls in changes made on another device.
@@ -138,8 +148,9 @@ still no server of our own: the browser talks straight to Google.
    enable it.
 3. **Google Auth Platform** (OAuth consent screen): get started, give it
    an app name and your email, choose **External**. Under **Audience**,
-   add your own Google address as a test user (or publish the app - the
-   `drive.appdata` scope doesn't need Google's review).
+   add your own Google address as a test user. Under **Data Access**, add
+   the `.../auth/drive.file` and `.../auth/drive.appdata` scopes (both are
+   non-sensitive, so publishing the app doesn't need Google's review).
 4. **Clients > Create client**: type **Web application**. Add
    `https://pluck1983-source.github.io` under *Authorized JavaScript
    origins* and `https://pluck1983-source.github.io/Tax-planner/` under
