@@ -4,14 +4,27 @@ import { AuthRequiredError, type CloudProvider, type RemoteFileMeta } from './ty
 /**
  * Google Drive backend. Signs in with Google's browser-only OAuth flow (a
  * full-page redirect to Google and back - no server, no popup, so it works
- * on an iPhone home-screen app) and keeps one JSON file in the Drive "app
- * data" folder: a hidden folder only this app can see. The drive.appdata
- * scope never reaches the rest of the user's Drive.
+ * on an iPhone home-screen app) and keeps one JSON file in the user's
+ * Drive, where they can see it, download it and back it up.
+ *
+ * The drive.file scope only reaches files this app created (or the user
+ * opened with it), never the rest of the user's Drive. Older builds kept the
+ * file in the hidden "app data" folder instead (drive.appdata); that scope is
+ * still requested so the old copy can be moved across - see migrateLegacyFile.
+ * Once every device has synced on this build, drive.appdata can be dropped.
  */
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const SCOPE = `${DRIVE_FILE_SCOPE} ${APPDATA_SCOPE}`;
 const FILE_NAME = 'tax-planner-data.json';
+/**
+ * The old app-data copy is renamed to this once it has been copied into
+ * Drive, so it is never migrated a second time (e.g. after the user deletes
+ * the Drive file) but stays in place as a backup.
+ */
+const MIGRATED_LEGACY_NAME = 'tax-planner-data.migrated.json';
 /**
  * The access token lives in sessionStorage, not localStorage: it is only good
  * for an hour, and keeping it per-tab means it is gone when the tab or app is
@@ -28,6 +41,8 @@ const SILENT_TRIED_KEY = 'tax-planner-gdrive-silent-tried';
 interface StoredToken {
   token: string;
   expiresAt: number;
+  /** The scopes requested when the token was issued; a token for other scopes is discarded */
+  scope?: string;
 }
 
 interface DriveFile {
@@ -45,6 +60,8 @@ function readToken(): StoredToken | null {
     const raw = sessionStorage.getItem(TOKEN_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredToken;
+    // A token from before a scope change can't reach the new file - get a fresh one.
+    if (parsed.scope !== SCOPE) return null;
     // Treat tokens as expired a minute early so a request doesn't race expiry.
     return parsed.expiresAt - 60_000 > Date.now() ? parsed : null;
   } catch {
@@ -70,7 +87,7 @@ function consumeRedirectResult() {
   sessionStorage.removeItem(STATE_KEY);
   const token = params.get('access_token');
   if (token) {
-    writeToken({ token, expiresAt: Date.now() + Number(params.get('expires_in') ?? 3600) * 1000 });
+    writeToken({ token, expiresAt: Date.now() + Number(params.get('expires_in') ?? 3600) * 1000, scope: SCOPE });
     sessionStorage.removeItem(SILENT_TRIED_KEY);
   }
   window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -116,15 +133,78 @@ async function driveFetch(url: string, init: RequestInit = {}): Promise<Response
     writeToken(null);
     throw new AuthRequiredError();
   }
+  if (response.status === 403) {
+    const text = await response.text().catch(() => '');
+    if (/insufficient|scope/i.test(text)) {
+      // Google's sign-in screen lets each permission be unticked; without
+      // both, the app can't find (or move across) the synced file.
+      writeToken(null);
+      throw new Error(
+        "Google Drive access wasn't fully granted. Disconnect, sync again, and leave both Drive boxes ticked on Google's screen.",
+      );
+    }
+    throw new Error('Google Drive request failed (403)');
+  }
   if (!response.ok) throw new Error(`Google Drive request failed (${response.status})`);
   return response;
 }
 
+/**
+ * The version is prefixed with the file id: Drive version numbers are only
+ * meaningful within one file, so moving to a different file (e.g. the
+ * app-data migration) must always count as a change.
+ */
 function toMeta(file: DriveFile): RemoteFileMeta {
-  return { id: file.id, modifiedTime: file.modifiedTime, version: file.version };
+  return { id: file.id, modifiedTime: file.modifiedTime, version: `${file.id}:${file.version}` };
 }
 
 const FIELDS = 'id,modifiedTime,version';
+
+async function findFile(space: 'drive' | 'appDataFolder', name: string): Promise<DriveFile | null> {
+  const params = new URLSearchParams({
+    spaces: space,
+    q: `name = '${name}' and trashed = false`,
+    fields: `files(${FIELDS})`,
+    orderBy: 'modifiedTime desc',
+  });
+  const response = await driveFetch(`https://www.googleapis.com/drive/v3/files?${params}`);
+  const body = (await response.json()) as { files: DriveFile[] };
+  return body.files[0] ?? null;
+}
+
+async function createFile(content: string): Promise<DriveFile> {
+  const boundary = `taxplanner${Date.now()}`;
+  const metadata = { name: FILE_NAME, mimeType: 'application/json' };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
+  const response = await driveFetch(
+    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=${FIELDS}`,
+    { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body },
+  );
+  return (await response.json()) as DriveFile;
+}
+
+/**
+ * One-off move from the hidden app-data folder (older builds) into Drive.
+ * Copies the old file's content byte for byte into a new Drive file, then
+ * renames the old one so it isn't picked up again. The old copy is never
+ * deleted. Returns null when there's nothing to move.
+ */
+async function migrateLegacyFile(): Promise<DriveFile | null> {
+  const legacy = await findFile('appDataFolder', FILE_NAME);
+  if (!legacy) return null;
+  const content = await (
+    await driveFetch(`https://www.googleapis.com/drive/v3/files/${legacy.id}?alt=media`)
+  ).text();
+  const created = await createFile(content);
+  await driveFetch(`https://www.googleapis.com/drive/v3/files/${legacy.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: MIGRATED_LEGACY_NAME }),
+  });
+  return created;
+}
 
 export const googleDriveProvider: CloudProvider = {
   id: 'google-drive',
@@ -159,15 +239,8 @@ export const googleDriveProvider: CloudProvider = {
   },
 
   async getMeta() {
-    const params = new URLSearchParams({
-      spaces: 'appDataFolder',
-      q: `name = '${FILE_NAME}' and trashed = false`,
-      fields: `files(${FIELDS})`,
-      orderBy: 'modifiedTime desc',
-    });
-    const response = await driveFetch(`https://www.googleapis.com/drive/v3/files?${params}`);
-    const body = (await response.json()) as { files: DriveFile[] };
-    return body.files[0] ? toMeta(body.files[0]) : null;
+    const file = (await findFile('drive', FILE_NAME)) ?? (await migrateLegacyFile());
+    return file ? toMeta(file) : null;
   },
 
   async download(meta) {
@@ -183,15 +256,6 @@ export const googleDriveProvider: CloudProvider = {
       );
       return toMeta((await response.json()) as DriveFile);
     }
-    const boundary = `taxplanner${Date.now()}`;
-    const metadata = { name: FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' };
-    const body =
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
-      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
-    const response = await driveFetch(
-      `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=${FIELDS}`,
-      { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body },
-    );
-    return toMeta((await response.json()) as DriveFile);
+    return toMeta(await createFile(content));
   },
 };
