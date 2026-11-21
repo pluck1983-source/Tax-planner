@@ -130,6 +130,21 @@ still no server of our own: the browser talks straight to Google.
   native iOS (Capacitor) shell, whose `capacitor://` address Google won't
   accept as a sign-in redirect.
 
+**Where this app's Google sign-in is set up:**
+
+- **Google account:** the owner's personal Gmail account (not the Wardrobe
+  to Wallet account).
+- **Google Cloud project:** **Tax Planner** (project ID `tax-planner-510419`).
+- **OAuth client:** the web client in that project. Its ID goes in the
+  `VITE_GOOGLE_CLIENT_ID` repository variable (Settings > Secrets and
+  variables > Actions > Variables).
+- **Shared with:** Wardrobe to Wallet (cash4stuff) signs in through this same
+  project and client, which is why its Google sign-in screen says "Tax
+  Planner". Changing this client's settings affects both apps.
+- The **David's Apps** and **Stock List** projects in the same account are
+  not used by this app. The till uses its own **Till** project in the
+  Wardrobe to Wallet account.
+
 **One-time setup** (free, no card needed):
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
@@ -144,9 +159,11 @@ still no server of our own: the browser talks straight to Google.
    `https://pluck1983-source.github.io` under *Authorized JavaScript
    origins* and `https://pluck1983-source.github.io/Tax-planner/` under
    *Authorized redirect URIs*.
-5. Copy the **Client ID** into `VITE_GOOGLE_CLIENT_ID` in the committed
-   `.env` file (it identifies the app and isn't a secret). Builds without
-   it simply have no sync button. To test locally, also add
+5. Copy the **Client ID** into the `VITE_GOOGLE_CLIENT_ID` repository
+   variable (Settings > Secrets and variables > Actions > Variables); the
+   deploy fails with a clear message if it's missing. For local work, copy
+   `.env.example` to `.env` and put it there. It identifies the app and
+   isn't a secret. To test locally, also add
    `http://localhost:5173` as an authorized origin and redirect URI.
 
 ### iOS/mobile notes
