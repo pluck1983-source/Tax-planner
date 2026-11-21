@@ -134,13 +134,15 @@ still no server of our own: the browser talks straight to Google.
 
 - **Google account:** the owner's personal Gmail account (not the Wardrobe
   to Wallet account).
-- **OAuth client:** its ID is the `VITE_GOOGLE_CLIENT_ID` repository
-  variable (Settings > Secrets and variables > Actions > Variables). Check
-  which project it's in from the number it starts with (table below).
-  Until that variable was introduced, the committed client was
-  `285172097021-…`, i.e. **David's Apps** - the same client Wardrobe to
-  Wallet (cash4stuff) still uses. If the variable still starts
-  `285172097021`, changing that client's settings affects both apps.
+- **Google Cloud project:** **David's Apps** (project ID
+  `empyrean-plexus-504512-b6`, number `285172097021`) - not the project
+  named "Tax Planner", which no app currently uses.
+- **OAuth client:** `285172097021-…`, set as the `VITE_GOOGLE_CLIENT_ID`
+  repository variable (Settings > Secrets and variables > Actions >
+  Variables).
+- **Shared with:** Wardrobe to Wallet (cash4stuff) uses this same client, so
+  changing its settings (redirect URIs, consent screen, test users) affects
+  both apps.
 
 Google Cloud projects (personal Gmail account, no organisation). A client
 ID always starts with its project's number:
