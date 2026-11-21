@@ -134,16 +134,25 @@ still no server of our own: the browser talks straight to Google.
 
 - **Google account:** the owner's personal Gmail account (not the Wardrobe
   to Wallet account).
-- **Google Cloud project:** **Tax Planner** (project ID `tax-planner-510419`).
-- **OAuth client:** the web client in that project. Its ID goes in the
-  `VITE_GOOGLE_CLIENT_ID` repository variable (Settings > Secrets and
-  variables > Actions > Variables).
-- **Shared with:** Wardrobe to Wallet (cash4stuff) signs in through this same
-  project and client, which is why its Google sign-in screen says "Tax
-  Planner". Changing this client's settings affects both apps.
-- The **David's Apps** and **Stock List** projects in the same account are
-  not used by this app. The till uses its own **Till** project in the
-  Wardrobe to Wallet account.
+- **OAuth client:** its ID is the `VITE_GOOGLE_CLIENT_ID` repository
+  variable (Settings > Secrets and variables > Actions > Variables). Check
+  which project it's in from the number it starts with (table below).
+  Until that variable was introduced, the committed client was
+  `285172097021-…`, i.e. **David's Apps** - the same client Wardrobe to
+  Wallet (cash4stuff) still uses. If the variable still starts
+  `285172097021`, changing that client's settings affects both apps.
+
+Google Cloud projects (personal Gmail account, no organisation). A client
+ID always starts with its project's number:
+
+| Project | Project ID | Project number |
+|---|---|---|
+| David's Apps | `empyrean-plexus-504512-b6` | `285172097021` |
+| Tax Planner | `tax-planner-510419` | `687936999132` |
+| Stock List | `stock-list-514919` | `613676181585` |
+
+The till uses its own **Till** project (`till-515322`) in the Wardrobe to
+Wallet Google account.
 
 **One-time setup** (free, no card needed):
 
